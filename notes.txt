@@ -72,3 +72,12 @@ maybe the control quadrant needs separate entries in the dataset.
 
 4/4/21:
 goal: get everything on github and implement control mask class
+
+4/15/21: 
+goal: implement dataloader idea with following format: 
+
+top layer: N experiment [0:3], this is each of the plates of the experiment. treating each plate as it's own experiment. 
+after selecting an experiment you get the previous format. 
+{images: [mxnx4 nparray], time since experiment start: int, time since stress: int: channel array: [G,B,NIR,R]}
+
+this is really just adding an additional layer st instead of getting the raw images you get the image of the plate. 
