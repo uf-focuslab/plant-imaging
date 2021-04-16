@@ -81,3 +81,7 @@ after selecting an experiment you get the previous format.
 {images: [mxnx4 nparray], time since experiment start: int, time since stress: int: channel array: [G,B,NIR,R]}
 
 this is really just adding an additional layer st instead of getting the raw images you get the image of the plate. 
+
+4/16/21: 
+fixed a small bug with the blue_threshold 
+tested splitting image strictly along 4 quadrants. works on one test image but I should try a batch to make sure it works throughout experiment. 
