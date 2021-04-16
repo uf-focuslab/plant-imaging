@@ -10,7 +10,7 @@ from ast import literal_eval
 
 
 
-root = '/blue/eel6935/gavinstjohn/plant/plant_imaging/'
+root = '/blue/eel6935/gavinstjohn/plant/plant-imaging/'
 labels = pd.read_csv(root + 'images/labels_20210210_01.csv')
 
 
@@ -36,14 +36,21 @@ class PlantStressDataset(Dataset):
         return len(self.labels)
 
     def __getitem__(self, idx):
-        if torch.is_tensor(idx):
-            idx = idx.tolist()
+        # idx is a tuple (int,int) containting two ints
+        # idx[0] is the sample in the timeline
+        # idx[1] is the experiment 
+        #       (0: top left, 1: top right, 2: bottom left, 3: bottom right)
+        sample_id = idx[0]
+        exp_id = idx[1]
+        if torch.is_tensor(sample_id):
+            sample_id = sample_id.tolist()
 
         # grabs image file path (image root directory + image file name)
-        img_names = literal_eval(self.labels.iloc[idx, 0])
+        img_names = literal_eval(self.labels.iloc[sample_id, 0])
         
         img_name_g = os.path.join(self.img_dir, img_names[0])
         image_g = io.imread(img_name_g)
+        print(image_g)
 
         img_name_b = os.path.join(self.img_dir, img_names[1])
         image_b = io.imread(img_name_b)
@@ -60,14 +67,18 @@ class PlantStressDataset(Dataset):
         # pulls in the image
         image = np.array([image_g, image_b, image_nir, image_r])
         # pulls in each of the three labels
-        capture_time = self.labels.iloc[idx,1]
-        stress_time = self.labels.iloc[idx,2]
-        img_channel = literal_eval(self.labels.iloc[idx,3])
+        capture_time = self.labels.iloc[sample_id,1]
+        stress_time = self.labels.iloc[sample_id,2]
+        img_channel = literal_eval(self.labels.iloc[sample_id,3])
+
+
 
         # constructs dict of image and labels
         sample = {'image': image, 'capture_time': capture_time, 'stress_time': stress_time, 'img_channel': img_channel}
 
-        if self.transform:
+        # sample = np.array([TL,TR,BL,BR]) 
+
+        if self.transform
             sample = self.transform(sample)
 
         return sample
@@ -101,8 +112,8 @@ class Mask(object):
         # init the mask on the blue layer of the stack 
         mask = images[1] #[1] = blue
         # keep anything less than a B value of blue_threshold (8 is good)
-        mask[mask <= blue_threshold] = 1
-        mask[mask > blue_threshold] = 0
+        mask[mask <= self.blue_threshold] = 1
+        mask[mask > self.blue_threshold] = 0
 
         # mask all all the layers
         masked_images = images*mask
@@ -116,20 +127,17 @@ class Mask(object):
 
 def main():
     plant_dataset = PlantStressDataset(
-            csv_file='/blue/eel6935/gavinstjohn/plant/plant_imaging/images/labels_20210210_01.csv',
-            img_dir='/blue/eel6935/gavinstjohn/plant/plant_imaging/images/experiment_20210210_1/')
+            csv_file='/blue/eel6935/gavinstjohn/plant/plant-imaging/images/labels_20210210_01.csv',
+            img_dir='/blue/eel6935/gavinstjohn/plant/plant-imaging/images/experiment_20210210_1/')
 
-    sample_101 = plant_dataset[101]
-    print(sample_101['image'][0])
+    sample_101 = plant_dataset[101,2] # pass a tuple in
 
-    mask = Mask(8)
-    t_plant_dataset = PlantStressDataset(
-            csv_file='/blue/eel6935/gavinstjohn/plant/plant_imaging/images/labels_20210210_01.csv',
-            img_dir='/blue/eel6935/gavinstjohn/plant/plant_imaging/images/experiment_20210210_1/',
-            transform=mask)
-
-    t_sample_101 = t_plant_dataset[101]
-    print(t_sample_101['image'][0])
+    """t_plant_dataset = PlantStressDataset(
+            csv_file='/blue/eel6935/gavinstjohn/plant/plant-imaging/images/labels_20210210_01.csv',
+            img_dir='/blue/eel6935/gavinstjohn/plant/plant-imaging/images/experiment_20210210_1/',
+            transform=Mask(8))
+    
+    t_sample_101 = t_plant_dataset[101,2]"""
 
 
 if __name__ == "__main__": 
