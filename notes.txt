@@ -85,4 +85,6 @@ this is really just adding an additional layer st instead of getting the raw ima
 4/16/21: 
 fixed a small bug with the blue_threshold 
 tested splitting image strictly along 4 quadrants. works on one test image but I should try a batch to make sure it works throughout experiment. 
-added quadrant splitting code to DL but the case statement syntax is broke, not sure why
+
+4/18/21: 
+idea: if we are treating each slide as an experiment, what if when conducting the experiment they are stressed at different times. ie plate 1 @ 30 mins, plate 2 @ 1 hr, plate 3 @ 1.5 or 2 hrs. idk if that would help reduce algorithm dependence on stress time vs experiment time 

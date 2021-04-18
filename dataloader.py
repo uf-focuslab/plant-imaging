@@ -42,7 +42,6 @@ class PlantStressDataset(Dataset):
         #       (0: top left, 1: top right, 2: bottom left, 3: bottom right)
         sample_id = idx[0]
         exp_id = idx[1]
-        print(exp_id)
         if torch.is_tensor(sample_id):
             sample_id = sample_id.tolist()
 
@@ -51,7 +50,6 @@ class PlantStressDataset(Dataset):
         
         img_name_g = os.path.join(self.img_dir, img_names[0])
         image_g = io.imread(img_name_g)
-        print(type(image_g))
 
         img_name_b = os.path.join(self.img_dir, img_names[1])
         image_b = io.imread(img_name_b)
@@ -72,31 +70,28 @@ class PlantStressDataset(Dataset):
         h,w = image_g.shape # grab size of img, could use any of them 
         height_cutoff = h//2 # get the middles of height and width
         width_cutoff = w//2
-        print(exp_id)
-        print(type(exp_id))
         # based on which experiment id is passed in return a different quadrant
-        match exp_id: 
-            case 0: # top left
-                image_g = image_g[:height_cutoff, :width_cutoff]
-                image_b = image_b[:height_cutoff, :width_cutoff]
-                image_nir = image_nir[:height_cutoff, :width_cutoff]
-                image_r = image_r[:height_cutoff, :width_cutoff]
-            case 1: # top right
-                image_g = image_g[:height_cutoff, width_cutoff:]
-                image_b = image_b[:height_cutoff, width_cutoff:]
-                image_nir = image_nir[:height_cutoff, width_cutoff:]
-                image_r = image_r[:height_cutoff, width_cutoff:]
-            case 2: # bottom left
-                image_g = image_g[height_cutoff:, :width_cutoff]
-                image_b = image_b[height_cutoff:, :width_cutoff]
-                image_nir = image_nir[height_cutoff:, :width_cutoff]
-                image_r = image_r[height_cutoff:, :width_cutoff]
-            case 3: # bottom right
-                image_g = image_g[height_cutoff:, width_cutoff:]
-                image_b = image_b[height_cutoff:, width_cutoff:]
-                image_nir = image_nir[height_cutoff:, width_cutoff:]
-                image_r = image_r[height_cutoff:, width_cutoff:]
 
+        if exp_id == 0:
+            image_g = image_g[:height_cutoff, :width_cutoff]
+            image_b = image_b[:height_cutoff, :width_cutoff]
+            image_nir = image_nir[:height_cutoff, :width_cutoff]
+            image_r = image_r[:height_cutoff, :width_cutoff]
+        elif exp_id == 1:
+            image_g = image_g[:height_cutoff, width_cutoff:]
+            image_b = image_b[:height_cutoff, width_cutoff:]
+            image_nir = image_nir[:height_cutoff, width_cutoff:]
+            image_r = image_r[:height_cutoff, width_cutoff:]
+        elif exp_id == 2:
+            image_g = image_g[height_cutoff:, :width_cutoff]
+            image_b = image_b[height_cutoff:, :width_cutoff]
+            image_nir = image_nir[height_cutoff:, :width_cutoff]
+            image_r = image_r[height_cutoff:, :width_cutoff]
+        elif exp_id == 3:
+            image_g = image_g[height_cutoff:, width_cutoff:]
+            image_b = image_b[height_cutoff:, width_cutoff:]
+            image_nir = image_nir[height_cutoff:, width_cutoff:]
+            image_r = image_r[height_cutoff:, width_cutoff:]
 
         # pul, 'img_channel': img_channel}
         # pulls in the image
@@ -157,19 +152,24 @@ class Mask(object):
 
 
 def main():
-    plant_dataset = PlantStressDataset(
+    """plant_dataset = PlantStressDataset(
             csv_file='/blue/eel6935/gavinstjohn/plant/plant-imaging/images/labels_20210210_01.csv',
             img_dir='/blue/eel6935/gavinstjohn/plant/plant-imaging/images/experiment_20210210_1/')
 
     sample_101 = plant_dataset[101,2] # pass a tuple in
     print(sample_101["image"][0])
+    print(sample_101["image"][0].shape)"""
 
-    """t_plant_dataset = PlantStressDataset(
+    t_plant_dataset = PlantStressDataset(
             csv_file='/blue/eel6935/gavinstjohn/plant/plant-imaging/images/labels_20210210_01.csv',
             img_dir='/blue/eel6935/gavinstjohn/plant/plant-imaging/images/experiment_20210210_1/',
             transform=Mask(8))
     
-    t_sample_101 = t_plant_dataset[101,2]"""
+    t_sample_101 = t_plant_dataset[101,2]
+    print(t_sample_101['image'][0])
+    print(np.count_nonzero(t_sample_101['image'][0]))
+
+    for ii in 
 
 
 if __name__ == "__main__": 
