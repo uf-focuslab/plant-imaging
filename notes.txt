@@ -90,3 +90,7 @@ tested splitting image strictly along 4 quadrants. works on one test image but I
 idea: if we are treating each slide as an experiment, what if when conducting the experiment they are stressed at different times. ie plate 1 @ 30 mins, plate 2 @ 1 hr, plate 3 @ 1.5 or 2 hrs. idk if that would help reduce algorithm dependence on stress time vs experiment time 
 
 fixed match case syntax error, replaced with if/elif chain. may be problem with mask erasing entire img. more testing needed
+
+
+5/3/21: 
+installed project on focuslab cluster
