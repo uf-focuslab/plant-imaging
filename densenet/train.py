@@ -15,8 +15,9 @@ import torchvision.datasets as datasets
 import densenet as dn
 
 import sys
-sys.path.append("/mnt/c/Users/gsjns/focus/plant_imaging/")
+sys.path.append("/home/gavinstjohn/plant-imaging/")
 from dataloader import PlantStressDataset
+from dataloader import Mask
 
 # used for logging to TensorBoard
 # thank u i do not have tensorboard
@@ -65,7 +66,7 @@ def main():
     if args.tensorboard: configure("runs/%s"%(args.name))
 
 
-    root = '/mnt/c/Users/gsjns/focus/plant_imaging/' 
+    root = '/home/gavinstjohn/plant-imaging/'
     
     # Data loading code
     normalize = transforms.Normalize(mean=[x/255.0 for x in [125.3, 123.0, 113.9]],
@@ -101,7 +102,7 @@ def main():
         PlantStressDataset(
             csv_file= root + 'images/labels_20210210_01.csv', 
             img_dir= root + 'images/experiment_20210210_1/', 
-            transform=transform_train),
+            transform=Mask(8)),
         batch_size=args.batch_size,
         shuffle=True,
         **kwargs)
@@ -155,7 +156,10 @@ def main():
         train(train_loader, model, criterion, optimizer, epoch)
 
         # evaluate on validation set
-        prec1 = validate(val_loader, model, criterion, epoch)
+        #prec1 = validate(val_loader, model, criterion, epoch)
+
+        #SIN::: 
+        prec1 = validate(train_loader, model, criterion, epoch)
 
         # remember best prec@1 and save checkpoint
         is_best = prec1 > best_prec1
