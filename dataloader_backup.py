@@ -51,16 +51,16 @@ class PlantStressDataset(Dataset):
         img_names = literal_eval(self.labels.iloc[sample_id, 0])
         
         img_name_g = os.path.join(self.img_dir, img_names[0])
-        image_g = cv2.imread(img_name_g, 0)
+        image_g = io.imread(img_name_g)
 
         img_name_b = os.path.join(self.img_dir, img_names[1])
-        image_b = cv2.imread(img_name_b, 0)
+        image_b = io.imread(img_name_b)
 
         img_name_nir = os.path.join(self.img_dir, img_names[2])
-        image_nir = cv2.imread(img_name_nir, 0)
+        image_nir = io.imread(img_name_nir)
 
         img_name_r = os.path.join(self.img_dir, img_names[3])
-        image_r = cv2.imread(img_name_r, 0)
+        image_r = io.imread(img_name_r)
 
         img_names = [img_name_g, img_name_b, img_name_nir, img_name_r]
 
@@ -139,10 +139,12 @@ class Mask(object):
 
         # init the mask on the blue layer of the stack 
         mask = images[1] #[1] = blue
+        print(mask)
         # keep anything less than a B value of blue_threshold (8 is good)
         mask[mask <= self.blue_threshold] = 1
         mask[mask > self.blue_threshold] = 0
 
+        print(mask)
         print(mask.sum())
 
         # mask all all the layers
