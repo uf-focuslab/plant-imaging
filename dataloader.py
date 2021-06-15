@@ -143,7 +143,6 @@ class Mask(object):
         mask[mask <= self.blue_threshold] = 1
         mask[mask > self.blue_threshold] = 0
 
-        print(mask.sum())
 
         # mask all all the layers
         masked_images = images*mask
@@ -157,22 +156,37 @@ class Mask(object):
 
 def main():
     """plant_dataset = PlantStressDataset(
-            csv_file='/blue/eel6935/gavinstjohn/plant/plant-imaging/images/labels_20210210_01.csv',
-            img_dir='/blue/eel6935/gavinstjohn/plant/plant-imaging/images/experiment_20210210_1/')
+            csv_file='/md0/home/gavinstjohn/plant-imaging/plant-imaging/images/labels_20210210_01.csv',
+            img_dir='/md0/home/gavinstjohn/plant-imaging/plant-imaging/images/experiment_20210210_1/')
 
     sample_101 = plant_dataset[101,2] # pass a tuple in
     print(sample_101["image"][0])
     print(sample_101["image"][0].shape)"""
 
     t_plant_dataset = PlantStressDataset(
-            csv_file='/blue/eel6935/gavinstjohn/plant/plant-imaging/images/labels_20210210_01.csv',
-            img_dir='/blue/eel6935/gavinstjohn/plant/plant-imaging/images/experiment_20210210_1/',
+            csv_file='/md0/home/gavinstjohn/plant-imaging/images/labels_20210210_01.csv',
+            img_dir='/md0/home/gavinstjohn/plant-imaging/images/experiment_20210210_1/',
             transform=Mask(8))
     
-    t_sample_101 = t_plant_dataset[101,2]
-    print(t_sample_101['image'][0])
-    print(np.count_nonzero(t_sample_101['image'][0]))
+    t_sample_101 = t_plant_dataset[101,0]
+    
+    t_plant_dataset[101,0]['image'][0]
 
+    mask = t_plant_dataset[100,0]['image'][0]*1
+    pixel_locations = np.random.choice(np.arange(mask.size), replace=False, size=15000)
+
+    # get random pixel locations, zero out the ones i dont want. then apply to all the layers. 
+
+
+    # construct all the time spots, 
+    # in this instance creates [95,96,97,...,104,105] (100 +/-5)
+    time = 100
+    tlist = []
+    for i in range(time-5, time+6): tlist.append(i)
+
+    #grab 15k of
+
+    
 
 if __name__ == "__main__": 
     main()
