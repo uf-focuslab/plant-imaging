@@ -168,25 +168,56 @@ def main():
             img_dir='/md0/home/gavinstjohn/plant-imaging/images/experiment_20210210_1/',
             transform=Mask(8))
     
-    t_sample_101 = t_plant_dataset[101,0]
+
+
+
+    sample = t_plant_dataset[101,0]['image'][0]
+
+    mask = sample
+    mask[mask > 0] = 1
+
+    # elementwise multiply unraveled mask           [ 1 1 0 0 1 1 0 0 0 ... 0 0 0 ]
+    # with arange array (all indices of mask array) [ 0 1 2 3 4 5 6 7 8 ... 65536 ]
+    # which results in an array of indices where the masked values are zero'd
+    #                                               [ 0 1 0 0 4 5 0 0 0 ... 0 ]
+    # remove all zeros                              [ 1 4 5 ... ]
+    # add back in the leading index if mask[0] is 1 [ 0 1 4 5 ... ]
+    # take random sample of this array to get 15000 random elements which are not zero
     
-    t_plant_dataset[101,0]['image'][0]
-
-    mask = t_plant_dataset[100,0]['image'][0]*1
-    pixel_locations = np.random.choice(np.arange(mask.size), replace=False, size=15000)
-
-    # get random pixel locations, zero out the ones i dont want. then apply to all the layers. 
+    # elementwise multiply
+    B = np.multiply(np.ravel(mask),np.arange(mask.size))
+    # remove all zeros
+    B = B[B!=0]
+    # add back in leading zero
+    if np.ravel(mask)[0] == 1: append(0,B)
+    # random sample of indices
+    pixel_locations = np.random.choice( B, replace=False, size=15000)
+    # unravel mask, everything is pretty much going to be worked on unraveled from 
+    # here forward
+    mask = np.ravel(mask)
+    # zero out all locations in mask which are not in the random sample
+    mask[~pixel_locations] = 0
 
 
     # construct all the time spots, 
     # in this instance creates [95,96,97,...,104,105] (100 +/-5)
     time = 100
-    tlist = []
-    for i in range(time-5, time+6): tlist.append(i)
+    quadrant = 0
+    time_range = np.arange(time-5,time+6)
 
-    #grab 15k of
-
-    
+    # initialize 
+    net_input = np.zeros((4,len(time_range),256**2))
+    # fill in network input matrix
+    for t, time in enumerate(time_range): 
+        # for each timestep in the time_range [95,96,97,...,103,104,105]
+        # and for each color channel in the image
+        for channel in range(4): 
+            # grab the sample at that timestep and the specified quadrant
+            temp_sample = t_plant_dataset[time,quadrant]['image'][channel]
+            # mask it to the selected random pixel_locations
+            masked_sample = np.multiply(np.ravel(temp_sample),mask)
+            # slot it into big input matrix
+            net_input[channel,t,:] = masked_sample
 
 if __name__ == "__main__": 
     main()
