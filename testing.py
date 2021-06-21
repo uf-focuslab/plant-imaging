@@ -1,5 +1,5 @@
 import sys
-sys.path.append("/home/gavinstjohn/plant-imaging")
+sys.path.append("/md0/home/gavinstjohn/plant-imaging")
 from dataloader import PlantStressDataset
 from dataloader import Mask
 
@@ -10,7 +10,7 @@ import torchvision
 def main(): 
 
 
-    root = '/home/gavinstjohn/plant-imaging/'
+    root = '/md0/home/gavinstjohn/plant-imaging/'
 
     #dataset = torch.utils.data.DataLoader(
     dataset = PlantStressDataset(
