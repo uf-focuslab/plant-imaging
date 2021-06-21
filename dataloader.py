@@ -219,5 +219,7 @@ def main():
             # slot it into big input matrix
             net_input[channel,t,:] = masked_sample
 
+    print(net_input)
+
 if __name__ == "__main__": 
     main()
