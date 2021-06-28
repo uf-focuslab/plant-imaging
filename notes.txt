@@ -98,3 +98,16 @@ densenet time?
 
 6/4/21: 
 fixed git issue, everything is current now. 
+
+
+6/21/21: 
+
+subsampling dataset using idx[0] and idx[1] isn't going to work, idx is generated automatically by pytorch. 
+for now: lock to experiment 0 (top left)
+in future: process images into 4 different folders? actually split up the images and categorize them. 
+not sure overall how to make the rnn process those folders though. to be figured out later. 
+
+6/23/21: 
+how to maintain unique values but turn 4 channels per pixel into one value per pixel
+brevin says to use convrnn
+(t/s,b,c,h,w): (time/sequence length, batch size, channels, height, width)

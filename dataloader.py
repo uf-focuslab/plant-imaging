@@ -19,7 +19,7 @@ labels = pd.read_csv(root + 'images/labels_20210210_01.csv')
 class PlantStressDataset(Dataset):
     """ plant stress experiment dataset """
 
-    def __init__(self, csv_file, img_dir, transform=None):
+    def __init__(self, csv_file, img_dir, seq_length, quadrant, transform=None):
         """
         args: 
             csv_file [str]: path to csv file with labels
@@ -32,18 +32,19 @@ class PlantStressDataset(Dataset):
         self.labels = pd.read_csv(csv_file)
         self.img_dir = img_dir
         self.transform = transform
+        self.seq_length = seq_length
+        self.quadrant = quadrant
 
     def __len__(self):
         # returns length of the labels (how many images)
         return len(self.labels)
 
     def __getitem__(self, idx):
-        # idx is a tuple (int,int) containting two ints
-        # idx[0] is the sample in the timeline
-        # idx[1] is the experiment 
-        #       (0: top left, 1: top right, 2: bottom left, 3: bottom right)
-        sample_id = idx[0]
-        exp_id = idx[1]
+        # idx is an int referring to the sample value
+        # quadrant is now controlled through the quadrant var in __init__
+        sample_id = idx
+        exp_id = self.quadrant
+
         if torch.is_tensor(sample_id):
             sample_id = sample_id.tolist()
 
@@ -104,7 +105,10 @@ class PlantStressDataset(Dataset):
         img_channel = literal_eval(self.labels.iloc[sample_id,3])
 
         # constructs dict of image and labels
-        sample = {'image': image, 'capture_time': capture_time, 'stress_time': stress_time, 'img_channel': img_channel}
+        #sample = {'image': image, 'capture_time': capture_time, 'stress_time': stress_time, 'img_channel': img_channel}
+        # 6/22: changing this to a list to play nicer with pytorch
+        sample = [image, capture_time, stress_time, img_channel]
+
 
         if self.transform:
             sample = self.transform(sample)
@@ -135,7 +139,7 @@ class Mask(object):
 
     def __call__(self, sample):
         # pull the image stack out of the sample dict
-        images = sample['image']
+        images = sample[0]
 
         # init the mask on the blue layer of the stack 
         mask = images[1] #[1] = blue
@@ -148,7 +152,7 @@ class Mask(object):
         masked_images = images*mask
         
         # put the (now masked) image stack back into the sample dict
-        sample['image'] = masked_images
+        sample[0] = masked_images
 
         # spit back out
         return sample
@@ -160,8 +164,9 @@ def main():
             img_dir='/md0/home/gavinstjohn/plant-imaging/plant-imaging/images/experiment_20210210_1/')
 
     sample_101 = plant_dataset[101,2] # pass a tuple in
-    print(sample_101["image"][0])
-    print(sample_101["image"][0].shape)"""
+    # sample rules are: 0: image, 1: capture time, 2: stress time, 3: img_channels
+    print(sample_101[0][0])
+    print(sample_101[0][0].shape)"""
 
     t_plant_dataset = PlantStressDataset(
             csv_file='/md0/home/gavinstjohn/plant-imaging/images/labels_20210210_01.csv',
@@ -171,7 +176,7 @@ def main():
 
 
 
-    sample = t_plant_dataset[101,0]['image'][0]
+    sample = t_plant_dataset[101,0][0][0]
 
     mask = sample
     mask[mask > 0] = 1
@@ -213,7 +218,7 @@ def main():
         # and for each color channel in the image
         for channel in range(4): 
             # grab the sample at that timestep and the specified quadrant
-            temp_sample = t_plant_dataset[time,quadrant]['image'][channel]
+            temp_sample = t_plant_dataset[time,quadrant][0][channel]
             # mask it to the selected random pixel_locations
             masked_sample = np.multiply(np.ravel(temp_sample),mask)
             # slot it into big input matrix
