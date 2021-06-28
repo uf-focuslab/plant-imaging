@@ -18,25 +18,12 @@ def main():
                 img_dir = root + 'images/experiment_20210210_1/',
                 transform = Mask(8))
 
-    """ii = 0
-    for jj in range(0,4):
-        for ii in range(0,339):
-            sample = dataset[ii,jj]"""
+    dataloader = torch.utils.data.DataLoader(dataset=dataset, 
+            batch_size = 5, 
+            shuffle = True)
 
-    output = open("output.txt", "r")
-    
-    line_list = []
-    for line in output:
-        try: 
-            line_list.append(int(line.strip('\n')))
-        except ValueError: 
-            print('oops')
-    #print(int(line_list[0]))
-    print(line_list)
-    print(min(line_list))
-    print(sum(line_list)/len(line_list))
-    print(0.8*min(line_list))
 
+    print(dataloader[0])
 
 if __name__ == "__main__":
     main()

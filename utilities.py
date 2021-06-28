@@ -19,7 +19,7 @@ def net_input(time_list, quadrant, N, experiment_info):
             transform = Mask(8))
 
     # reconstruct the binary mask of foliage
-    mask = dataset[time_list[0],quadrant]['image'][0]
+    mask = dataset[time_list[0],quadrant][0][0]
     mask[mask > 0] = 1
 
     # elementwise multiply unraveled mask           [ 1 1 0 0 1 1 0 0 0 ... 0 0 0 ]
@@ -52,7 +52,7 @@ def net_input(time_list, quadrant, N, experiment_info):
         # and for each color channel in the image
         for channel in range(4):
             # grab the sample at that timestep and the specified quadrant
-            temp_sample = dataset[time,quadrant]['image'][channel]
+            temp_sample = dataset[time,quadrant][0][channel]
             # mask it to the selected random pixel_locations
             masked_sample = np.multiply(np.ravel(temp_sample),mask)
             # slot it into big input matrix
