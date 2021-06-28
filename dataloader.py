@@ -39,14 +39,8 @@ class PlantStressDataset(Dataset):
         # returns length of the labels (how many images)
         return len(self.labels)
 
-    def __getitem__(self, idx):
-        # idx is an int referring to the sample value
-        # quadrant is now controlled through the quadrant var in __init__
-        sample_id = idx
+    def __grab__(self, sample_id):
         exp_id = self.quadrant
-
-        if torch.is_tensor(sample_id):
-            sample_id = sample_id.tolist()
 
         # grabs image file path (image root directory + image file name)
         img_names = literal_eval(self.labels.iloc[sample_id, 0])
@@ -99,10 +93,54 @@ class PlantStressDataset(Dataset):
         # pul, 'img_channel': img_channel}
         # pulls in the image
         image = np.array([image_g, image_b, image_nir, image_r])
-        # pulls in each of the three labels
-        capture_time = self.labels.iloc[sample_id,1]
-        stress_time = self.labels.iloc[sample_id,2]
-        img_channel = literal_eval(self.labels.iloc[sample_id,3])
+
+        return image
+
+    def __getitem__(self, idx):
+        # idx is an int referring to the sample value
+        # quadrant is now controlled through the quadrant var in __init__
+        sample_id = idx
+        exp_id = self.quadrant
+        seq_length = self.seq_length
+
+
+        print(sample_id)
+        print(type(sample_id))
+
+        if torch.is_tensor(sample_id):
+            batch_list = sample_id.tolist()
+
+            # for batches, this will generate [b,t,c,h,w]
+            image = np.zeros((len(batch_list),seq_length,4,256,256))
+            capture_time = stress_time = img_channel = np.zeros((len(batch_list),seq_length))
+            for j, super_sample in enumerate(batch_list): 
+                for i, sample in enumerate(range(super_sample, super_sample+seq_length)):
+                    # pulls in each of the three labels
+                    capture_time[j,i] = self.labels.iloc[sample,1]
+                    stress_time[j,i] = self.labels.iloc[sample,2]
+                    img_channel[j,i] = literal_eval(self.labels.iloc[sample,3])
+                    
+                    image[j,i] = self.__grab__(sample)
+
+        elif type(sample_id)==int: 
+            # pulls in each of the three labels
+            capture_time = self.labels.iloc[sample_id,1]
+            stress_time = self.labels.iloc[sample_id,2]
+            img_channel = literal_eval(self.labels.iloc[sample_id,3])
+
+            # for single pulls, this will generate [t,c,h,w]
+            image = np.zeros((seq_length,len(img_channel),256,256))
+            # and labels will be [t, label_value]
+            capture_time = stress_time = img_channel = np.zeros((seq_length))
+            for i, sample in enumerate(range(sample_id, sample_id+seq_length)):
+                capture_time[i] = self.labels.iloc[sample,1]
+                stress_time[i] = self.labels.iloc[sample,2]
+                img_channel[i] = literal_eval(self.labels.iloc[sample,3])
+            
+                image[i] = self.__grab__(sample)
+
+        print('image shape::')
+        print(image.shape)
 
         # constructs dict of image and labels
         #sample = {'image': image, 'capture_time': capture_time, 'stress_time': stress_time, 'img_channel': img_channel}
