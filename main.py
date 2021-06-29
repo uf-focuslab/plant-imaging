@@ -90,7 +90,7 @@ sys.exit()
 """
 
                    
-
+"""
 # Recurrent neural network (many-to-one)
 class RNN(nn.Module):
     def __init__(self, input_size, hidden_size, num_layers, num_classes):
@@ -111,19 +111,25 @@ class RNN(nn.Module):
         # Decode the hidden state of the last time step
         out = self.fc(out[:, -1, :])
         return out
+"""
 
+"""
 model = RNN(input_size, hidden_size, num_layers, num_classes).to(device)
 # input_dim: int, number of channels of input tensor
 # hidden_dim: int or list of ints for each layer
 # num_layers: int, number of lstm layers stacked 
+"""
 
 model = ConvLSTM(input_dim=4, 
                  hidden_dim=64,
                  kernel_size=(3,3), 
-                 num_layers=0,
+                 num_layers=1,
                  batch_first=True,
                  bias=True,
                  return_all_layers=False)
+
+model = model.to(device)
+
 
 # Loss and optimizer
 criterion = nn.CrossEntropyLoss()
@@ -154,11 +160,10 @@ for epoch in range(num_epochs):
 ### UNDER CONSTRUCTION ####
 total_step = len(p_train_loader)
 for epoch in range(num_epochs):
-    for i, (images,capture_times,stress_times,img_channels) in enumerate(p_train_loader):
+    for i, (images,capture_times,stress_times) in enumerate(p_train_loader):
         ## image reshaping happens here, may be where to use net_input function 
         ## i think it grabs all the images for the batch size, not sure how that 
         ## fits into the weird network input shape we're using. 
-        print(i)
 
         #images = images.reshape(-1, sequence_length, input_size).to(device, dtype=torch.float32)
         #put = images.reshape(batch_size, sequence_length 
@@ -183,7 +188,11 @@ for epoch in range(num_epochs):
         ## mnist dataset returns them. i think manual is the best bet. 
          
         # Forward pass
-        outputs = model(images)
+        outputs, hidden = model(images)
+        print('::::OUTPUTS::::')
+        print(outputs)
+        if type(outputs) == list: outputs = outputs[0]
+        
         loss = criterion(outputs, labels)
         
         # Backward and optimize

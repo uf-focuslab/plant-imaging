@@ -90,7 +90,6 @@ class PlantStressDataset(Dataset):
             image_nir = image_nir[height_cutoff:, width_cutoff:]
             image_r = image_r[height_cutoff:, width_cutoff:]
 
-        # pul, 'img_channel': img_channel}
         # pulls in the image
         image = np.array([image_g, image_b, image_nir, image_r])
 
@@ -104,21 +103,18 @@ class PlantStressDataset(Dataset):
         seq_length = self.seq_length
 
 
-        print(sample_id)
-        print(type(sample_id))
 
         if torch.is_tensor(sample_id):
             batch_list = sample_id.tolist()
 
             # for batches, this will generate [b,t,c,h,w]
             image = np.zeros((len(batch_list),seq_length,4,256,256))
-            capture_time = stress_time = img_channel = np.zeros((len(batch_list),seq_length))
+            capture_time = stress_time = np.zeros((len(batch_list),seq_length))
             for j, super_sample in enumerate(batch_list): 
                 for i, sample in enumerate(range(super_sample, super_sample+seq_length)):
                     # pulls in each of the three labels
                     capture_time[j,i] = self.labels.iloc[sample,1]
                     stress_time[j,i] = self.labels.iloc[sample,2]
-                    img_channel[j,i] = literal_eval(self.labels.iloc[sample,3])
                     
                     image[j,i] = self.__grab__(sample)
 
@@ -126,26 +122,22 @@ class PlantStressDataset(Dataset):
             # pulls in each of the three labels
             capture_time = self.labels.iloc[sample_id,1]
             stress_time = self.labels.iloc[sample_id,2]
-            img_channel = literal_eval(self.labels.iloc[sample_id,3])
 
             # for single pulls, this will generate [t,c,h,w]
-            image = np.zeros((seq_length,len(img_channel),256,256))
+            image = np.zeros((seq_length,4,256,256))
             # and labels will be [t, label_value]
-            capture_time = stress_time = img_channel = np.zeros((seq_length))
+            capture_time = stress_time = np.zeros((seq_length))
             for i, sample in enumerate(range(sample_id, sample_id+seq_length)):
                 capture_time[i] = self.labels.iloc[sample,1]
                 stress_time[i] = self.labels.iloc[sample,2]
-                img_channel[i] = literal_eval(self.labels.iloc[sample,3])
             
                 image[i] = self.__grab__(sample)
 
-        print('image shape::')
-        print(image.shape)
 
         # constructs dict of image and labels
-        #sample = {'image': image, 'capture_time': capture_time, 'stress_time': stress_time, 'img_channel': img_channel}
+        #sample = {'image': image, 'capture_time': capture_time, 'stress_time': stress_time}
         # 6/22: changing this to a list to play nicer with pytorch
-        sample = [image, capture_time, stress_time, img_channel]
+        sample = [image, capture_time, stress_time]
 
 
         if self.transform:
@@ -202,7 +194,7 @@ def main():
             img_dir='/md0/home/gavinstjohn/plant-imaging/plant-imaging/images/experiment_20210210_1/')
 
     sample_101 = plant_dataset[101,2] # pass a tuple in
-    # sample rules are: 0: image, 1: capture time, 2: stress time, 3: img_channels
+    # sample rules are: 0: image, 1: capture time, 2: stress time
     print(sample_101[0][0])
     print(sample_101[0][0].shape)"""
 
