@@ -116,7 +116,7 @@ class ConvLSTM(nn.Module):
             cur_input_dim = self.input_dim if i == 0 else self.hidden_dim[i - 1]
 
             cell_list.append(ConvLSTMCell(input_dim=cur_input_dim,
-                                          kidden_dim=self.hidden_dim[i],
+                                          hidden_dim=self.hidden_dim[i],
                                           kernel_size=self.kernel_size[i],
                                           bias=self.bias))
 

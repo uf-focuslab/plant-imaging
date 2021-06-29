@@ -111,3 +111,10 @@ not sure overall how to make the rnn process those folders though. to be figured
 how to maintain unique values but turn 4 channels per pixel into one value per pixel
 brevin says to use convrnn
 (t/s,b,c,h,w): (time/sequence length, batch size, channels, height, width)
+
+6/29/21: 
+
+got the image input in the right shape and everything is flowing. need to change 
+the shape of the labels i think to match the input. it is currently ([b,t]) and i think should be (b, hidden_layer, h, w). at least that's what pytorch is asking for: 
+"ValueError: Expected target size (5, 64, 256, 256), got torch.Size([5, 10])"
+not sure. 

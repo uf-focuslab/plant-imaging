@@ -20,7 +20,7 @@ def main():
                 quadrant = 0,
                 transform = Mask(8))
                 
-    print(dataset[torch.tensor([0,1,2,3])])
+    print(dataset[torch.tensor([0,1,2,3,4,5])])
 
     dataloader = torch.utils.data.DataLoader(dataset=dataset, 
             batch_size = 5, 
