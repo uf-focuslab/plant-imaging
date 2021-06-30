@@ -118,3 +118,6 @@ got the image input in the right shape and everything is flowing. need to change
 the shape of the labels i think to match the input. it is currently ([b,t]) and i think should be (b, hidden_layer, h, w). at least that's what pytorch is asking for: 
 "ValueError: Expected target size (5, 64, 256, 256), got torch.Size([5, 10])"
 not sure. 
+
+6/30/21: 
+in my own head about how the labels / output layer should be structured. going to try to get this working as a binary classifier, stressed or not stressed. 
