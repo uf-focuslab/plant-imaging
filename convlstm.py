@@ -91,7 +91,7 @@ class ConvLSTM(nn.Module):
         >> h = last_states[0][0]  # 0 for layer index, 0 for h index
     """
 
-    def __init__(self, input_dim, hidden_dim, kernel_size, num_layers,
+    def __init__(self, input_dim, hidden_dim, kernel_size, num_layers, output_dim,
                  batch_first=False, bias=True, return_all_layers=False):
         super(ConvLSTM, self).__init__()
 
@@ -107,6 +107,7 @@ class ConvLSTM(nn.Module):
         self.hidden_dim = hidden_dim
         self.kernel_size = kernel_size
         self.num_layers = num_layers
+        self.output_dim = output_dim
         self.batch_first = batch_first
         self.bias = bias
         self.return_all_layers = return_all_layers
@@ -121,6 +122,9 @@ class ConvLSTM(nn.Module):
                                           bias=self.bias))
 
         self.cell_list = nn.ModuleList(cell_list)
+
+        #self.fc = nn.Linear(hidden_dim[-1], output_dim)
+        self.fc = nn.Linear(256**2, output_dim)
 
     def forward(self, input_tensor, hidden_state=None):
         """
@@ -157,6 +161,9 @@ class ConvLSTM(nn.Module):
         seq_len = input_tensor.size(1)
         cur_layer_input = input_tensor
 
+        # if not return_all_layers doesn't trigger
+        out = []
+
         for layer_idx in range(self.num_layers):
 
             h, c = hidden_state[layer_idx]
@@ -176,7 +183,11 @@ class ConvLSTM(nn.Module):
             layer_output_list = layer_output_list[-1:]
             last_state_list = last_state_list[-1:]
 
-        return layer_output_list, last_state_list
+            out = last_state_list[0][0]
+            out = out.view(out.size(0), -1)
+            out = self.fc(out)
+
+        return layer_output_list, last_state_list, out
 
     def _init_hidden(self, batch_size, image_size):
         init_states = []

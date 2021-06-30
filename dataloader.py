@@ -103,6 +103,8 @@ class PlantStressDataset(Dataset):
         seq_length = self.seq_length
 
 
+        # handle the edges of the dataset. there must be a more elegant way to do this
+        if sample_id-seq_length<0: sampe_id = sample_id+seq_length
 
         if torch.is_tensor(sample_id):
             batch_list = sample_id.tolist()
@@ -111,7 +113,7 @@ class PlantStressDataset(Dataset):
             image = np.zeros((len(batch_list),seq_length,4,256,256))
             capture_time = stress_time = np.zeros((len(batch_list),seq_length))
             for j, super_sample in enumerate(batch_list): 
-                for i, sample in enumerate(range(super_sample, super_sample+seq_length)):
+                for i, sample in enumerate(range(super_sample-seq_length, super_sample)):
                     # pulls in each of the three labels
                     capture_time[j,i] = self.labels.iloc[sample,1]
                     stress_time[j,i] = self.labels.iloc[sample,2]
@@ -127,7 +129,7 @@ class PlantStressDataset(Dataset):
             image = np.zeros((seq_length,4,256,256))
             # and labels will be [t, label_value]
             capture_time = stress_time = np.zeros((seq_length))
-            for i, sample in enumerate(range(sample_id, sample_id+seq_length)):
+            for i, sample in enumerate(range(sample_id-seq_length, sample_id)):
                 capture_time[i] = self.labels.iloc[sample,1]
                 stress_time[i] = self.labels.iloc[sample,2]
             
