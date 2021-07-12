@@ -16,18 +16,32 @@ def main():
     dataset = PlantStressDataset(
                 csv_file = root + 'images/labels_20210210_01.csv',
                 img_dir = root + 'images/experiment_20210210_1/',
-                seq_length = 10, 
+                seq_length = 1, 
                 quadrant = 0,
                 transform = Mask(8))
                 
-    print(dataset[torch.tensor([0,1,2,3,4,5])])
 
-    dataloader = torch.utils.data.DataLoader(dataset=dataset, 
-            batch_size = 5, 
-            shuffle = True)
+    dataloader = torch.utils.data.DataLoader(
+            dataset=dataset, 
+            batch_size = 1, 
+            shuffle = False)
 
 
-    #print(dataloader[0])
+    unstressed = 0
+    stressed = 0
+    for i, (images, capture_times, stress_times) in enumerate(dataloader): 
+        if stress_times == -1: 
+            unstressed += 1
+        else: 
+            stressed += 1
+
+
+    print('stressed #: ', stressed)
+    print('unstressed #: ', unstressed) 
+    print('%stressed: ', stressed/(stressed+unstressed))
+
+
+
 
 if __name__ == "__main__":
     main()

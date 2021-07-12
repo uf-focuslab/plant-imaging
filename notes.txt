@@ -121,3 +121,78 @@ not sure.
 
 6/30/21: 
 in my own head about how the labels / output layer should be structured. going to try to get this working as a binary classifier, stressed or not stressed. 
+
+7/02/21: 
+met with sanjeev today. he said not to touch anything else and focus on testing the current implementation. 
+concern: the network is learning the mask and will make it not work on other experiments/quadrants. but maybe not. maybe starting with pretrained weights from one experiment will reduce training time for other applications
+try: training for different lengths of time (different # of epochs?)
+implement: separate test/train datasets, testing quantification. 
+question: is an out of 0.95 equally as wrong as a 0.65 when the gt is 1? i dont think the network spits out a perfect 1 
+
+epoch tests: 1, 3, 5, 10, 20 epochs
+
+hyperparameters: 
+sequence_length = 10
+input_dim = 4
+hidden_dim = [128,64,8,1]
+num_layers = 4
+output_dim = 1
+
+
+tried to squish with sgmoid. its weird and never outputting a 0, more fiddling needed. 
+
+
+7/06/21: 
+
+trying to implement weighted loss s/t it counteracts the imbalanced dataset
+
+current problem is the input to crossentropyloss
+
+
+7/07/21: 
+ok got it working 
+
+epoch tests: 1, 3, 5, 10, 20 epochs 
+
+hyperparameters: 
+sequence_length = 10
+input_dim = 4
+hidden_dim = [128, 64, 8, 1]
+num_layers = 4
+output_dim = 1
+batch_szie = 1
+num_epochs = x
+learning_rate = 0.01
+kernel_size = (3,3)
+
+results:: 
+epoch   test_loss   accuracy    model_name
+    1   32.98       55          cel_model_1 
+    3   75          27          cel_model_3
+    5   32.98       27.5        cel_model_5
+   10   75.98       27.5        cel_model_10
+   20   32.98       27.5        cel_model_20
+  100   32.98       27.5        cel_model_100
+
+
+07/09/21: 
+
+going to write a script to run each epoch length and output the results to a file
+that way it'll be easier to adjust hyperparameters and then test all epoch lengths. 
+
+lr test: 0.005, 0.001, 0.0005, 0.0001
+batch_size: 1
+
+epoch:  1                   3           5               10              20              100
+lr      tl      acc     tl      acc     tl      acc     tl      acc     tl      acc     tl      acc
+0.005   32.98   27.5    32.98   27.5    32.98   27.5    75.98   27.5    75.98   27.5    32.98   27.5
+0.001   32.98   27.5    32.98   27.5    32.98   27.5    32.98   27.5    32.98   27.5    32.98   27.5
+0.0005  32.98   27.5    32.98   27.5    32.98   27.5    75.98   27.5    32.98   27.5    32.98   27.5
+0.0001  32.98   27.5    32.98   0       23.98   0       32.98   27.5    32.98   27.5    32.98   27.5
+
+
+07/12/21: 
+above run has finished and everything is still 32.98/27.5 
+not sure if that means that the model is reaching peak performance or if its not actually working 
+there are a few anomalies. need sanjeev to help me interpret I think. also need to learn more nitty about how the loss works. 
+i know lower loss = better, but how is it actually calculated? 
