@@ -1,0 +1,13 @@
+test_loss:       75.98852908611298
+accuracy:        27.5
+
+hyperparameters:
+sequence_length: 10
+input_dim:       4
+hidden_dim:      [128, 64, 8, 1]
+num_layers:      4
+output_dim:      1
+batch_size:      1
+num_epochs:      20
+learning_rate:   0.005
+kernel_size:     (3, 3)

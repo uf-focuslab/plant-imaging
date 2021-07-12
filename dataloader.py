@@ -174,7 +174,7 @@ class Mask(object):
         images = sample[0]
 
         # init the mask on the blue layer of the stack 
-        mask = images[1] #[1] = blue
+        mask = images[0][1] #[1] = blue
         # keep anything less than a B value of blue_threshold (8 is good)
         mask[mask <= self.blue_threshold] = 1
         mask[mask > self.blue_threshold] = 0
