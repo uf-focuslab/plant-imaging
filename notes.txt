@@ -201,3 +201,31 @@ i know lower loss = better, but how is it actually calculated?
 talked with sanjeev yesterday, need to try lower learning rate and look at other binary classification architectures
 
 should i also try standardizing the input? also changing optimizer to stochastic gradient descent from 'Adam' 
+
+
+07/20/21: 
+testing adding more linear layers for reduction and adding a relu activation layer between each. 
+testing 4 reduction layers. so going from h*w = 256**2, [h*w -> 1 -> sigmoid] to 
+[h*w -(relu)-> h*w/2 -(relu)-> h*w/4 -(relu)-> h*w/8 -(relu)-> 1 -> sigmoid] 
+i worry this is too much addition, if doesn't work try simplifying to maybe 2 layers? 
+[h*w -(relu)-> h*w/2 -(relu)-> 1 -> sigmoid]
+
+running a test at following parameters: 
+
+sequence_length = 10 
+input_dim = 4                   # number of image channels
+hidden_dim = [128, 64, 8, 1]    # hidden layer dimensions
+num_layers = 4                  # number of hidden layers
+output_dim = 1                  # size of linear output layer
+batch_size = 1                  # number of samples per batch
+num_epochs = 5                  # loop over entire dataset this many times
+learning_rate = 0.00001            # learning rate for gradient descent
+kernel_size = (3,3)             # kernel size for convolution layer
+
+this is also lowering the lr by 1 order of mag 
+
+i also worry that adding this much stuff is going to decrease performance mega
+update: after trying it runs out of memory so fast, even on batch size 1. need to reduce that load. 
+reconfigured the layers s/t each layer overwrites the last, so each isn't kept in memory
+
+still died, ran out of mem @ back prop,line 130: loss.backward()   

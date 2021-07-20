@@ -124,7 +124,21 @@ class ConvLSTM(nn.Module):
         self.cell_list = nn.ModuleList(cell_list)
 
         #self.fc = nn.Linear(hidden_dim[-1], output_dim)
-        self.fc = nn.Linear(256**2, output_dim)
+        start_dim = 256**2
+        a = start_dim
+        self.fc1 = nn.Linear(a, int(a/2)) # 65536 -> 32768
+        self.fc2 = nn.Linear(int(a/2), int(a/4)) # 32768 -> 16384
+        self.fc3 = nn.Linear(int(a/4), int(a/8)) # 16384 -> 8192
+        self.fc4 = nn.Linear(int(a/8), output_dim) # 8192 -> output dim (1)
+
+        self.relu = nn.ReLU()
+
+        #self.lrelu = nn.LeakyReLU(0.01)
+
+        self.sig = nn.Sigmoid()
+
+
+
 
     def forward(self, input_tensor, hidden_state=None):
         """
@@ -183,9 +197,44 @@ class ConvLSTM(nn.Module):
             layer_output_list = layer_output_list[-1:]
             last_state_list = last_state_list[-1:]
 
+            #a1 = last_state_list[0][0]
+            #a1 = a1.view(a1.size(0), -1)
+
+            # testing more linear layers with activation function 
+            # maybe add dropout later? 
+            #a1 = self.fc1(a1)
+            #h1 = self.relu(a1)
+
+            #a2 = self.fc2(h1)
+            #h2 = self.relu(a2)
+
+            #a3 = self.fc3(h2)
+            #h3 = self.relu(a3)
+
+            #a4 = self.fc4(h3)
+            #h4 = self.relu(a4)
+            
+            #out = self.sig(h4)
+
+            # changed naming scheme so it doesn't keep each layer in memory 
             out = last_state_list[0][0]
             out = out.view(out.size(0), -1)
-            out = self.fc(out)
+
+            # testing more linear layers with activation function 
+            # maybe add dropout later? 
+            out = self.fc1(out)
+            out = self.relu(out)
+
+            out = self.fc2(out)
+            out = self.relu(out)
+
+            out = self.fc3(out)
+            out = self.relu(out)
+
+            out = self.fc4(out)
+            out = self.relu(out)
+            
+            out = self.sig(out)
 
         return layer_output_list, last_state_list, out
 

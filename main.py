@@ -30,8 +30,8 @@ hidden_dim = [128, 64, 8, 1]    # hidden layer dimensions
 num_layers = 4                  # number of hidden layers
 output_dim = 1                  # size of linear output layer
 batch_size = 1                  # number of samples per batch
-num_epochs = 100                  # loop over entire dataset this many times
-learning_rate = 0.01            # learning rate for gradient descent
+num_epochs = 5                  # loop over entire dataset this many times
+learning_rate = 0.00001            # learning rate for gradient descent
 kernel_size = (3,3)             # kernel size for convolution layer
 
 # PLANT dataset/loader
@@ -119,11 +119,9 @@ for epoch in range(num_epochs): # for each epoch,
         labels = labels.to(device, dtype=torch.long) # sends to cuda device and changes datatype
 
         # Forward pass
-        outputs, hidden, out = model(images) # out is the output of the linear layer, outputs and hidden are spat out by the lstm
+        _, _, out = model(images) # out is the output of the linear layer, outputs and hidden are spat out by the lstm
 
         
-        sig = nn.Sigmoid() # squish output between 0 and 1
-        out = sig(out)
         out = torch.cat((out,1-out),1) # needed for cross entropy loss, shape of (N,C)
         loss = criterion(out, labels[0])
         
