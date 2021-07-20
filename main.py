@@ -93,7 +93,9 @@ normedWeights = [1 - (x / sum(nSamples)) for x in nSamples]
 normedWeights = torch.FloatTensor(normedWeights).to(device)
 criterion = nn.CrossEntropyLoss(weight=normedWeights) # note: cel needs dtype=long for out/labels
 
-optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate) # yoinked from example, not sure what the best optimizer is
+# optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate) # yoinked from example, not sure what the best optimizer is
+# changed to SGD from adam just for a test, adam is supposed to have much faster convergence
+optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate) # yoinked from example, not sure what the best optimizer is
 
 
 ### TRAINING LOOP ###
