@@ -123,6 +123,8 @@ class ConvLSTM(nn.Module):
 
         self.cell_list = nn.ModuleList(cell_list)
 
+        # removing these layers 7/26 to test alternate timeseries
+        """
         #self.fc = nn.Linear(hidden_dim[-1], output_dim)
         start_dim = 256**2
         a = start_dim
@@ -134,6 +136,7 @@ class ConvLSTM(nn.Module):
         self.relu = nn.ReLU()
 
         #self.lrelu = nn.LeakyReLU(0.01)
+        """
 
         self.sig = nn.Sigmoid()
 
@@ -222,6 +225,8 @@ class ConvLSTM(nn.Module):
 
             # testing more linear layers with activation function 
             # maybe add dropout later? 
+            # removing these layers 7/26 to test alternate time series
+            """
             out = self.fc1(out)
             out = self.relu(out)
 
@@ -233,6 +238,7 @@ class ConvLSTM(nn.Module):
 
             out = self.fc4(out)
             out = self.relu(out)
+            """
             
             out = self.sig(out)
 
