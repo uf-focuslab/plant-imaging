@@ -202,7 +202,6 @@ talked with sanjeev yesterday, need to try lower learning rate and look at other
 
 should i also try standardizing the input? also changing optimizer to stochastic gradient descent from 'Adam' 
 
-
 07/20/21: 
 testing adding more linear layers for reduction and adding a relu activation layer between each. 
 testing 4 reduction layers. so going from h*w = 256**2, [h*w -> 1 -> sigmoid] to 
@@ -229,3 +228,47 @@ update: after trying it runs out of memory so fast, even on batch size 1. need t
 reconfigured the layers s/t each layer overwrites the last, so each isn't kept in memory
 
 still died, ran out of mem @ back prop,line 130: loss.backward()   
+
+
+07/23/21: 
+
+planning block diagram: 
+image -> mask -> convlstm -> linear + activation function layers -> binary classification 
+
+
+07/26/21: 
+met with plant lab on friday. they said it was unlikely that there could be any change seen over a 10 minute window. 
+try expanding to 40 mins. [t-9, t-8, ..., t-1, t] --> [t-40, t-36, t-32, t-28, t-24, t-20, t-16, t-12, t-8, t-4, t]
+can also mess around with distribution, maybe [t-40, t-30, t-20, t-15, t-10, t-5, t] ?? dunno 
+going to roll back activation layers thing so i can get some memory back.
+
+implementing adjustable sequence length in the following way: 
+seq_length remains the same. it's the length of the time series array, 
+    ie: seq_length = 10 --> [ -9,  -8,  -7,  -6,  -5,  -4,  -3, -2, -1, 0] or 
+                            [-36, -32, -28, -24, -20, -16, -12, -8, -4, 0] 
+
+seq_range is the range of the time series array, 
+    ie: for the above, seq_range = 10 for the top and seq_range = 40 for the bottom
+
+this array is constructed using torch.arange(start, stop, step)
+for seq_length = 10, seq_range = 40 which aims for the following array: 
+[-36, -32, -28, -24, -20, -16, -12, -8, -4, 0] 
+you use 
+torch.arange(sample_id-(seq_range-(seq_range/seq_length)), sample_id+(seq_range/seq_length), seq_range/seq_length)
+
+
+07/27/21: 
+
+first results from epoch=5, lr=0.00001, seq_length = 10, seq_range = 40:
+
+test_loss: 46.21
+accuracy: 56/67 ( correct stress predictions: 56/56, correct unstressed predictions: 0/11 )
+
+one note is all the outputs of the network were very similar but not exactly the same.
+They all looked like [0.4952, 0.5048] with each being +/- 0.001
+
+trying some with more epochs
+
+epoch=10: 
+
+

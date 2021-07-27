@@ -19,7 +19,7 @@ labels = pd.read_csv(root + 'images/labels_20210210_01.csv')
 class PlantStressDataset(Dataset):
     """ plant stress experiment dataset """
 
-    def __init__(self, csv_file, img_dir, seq_length, quadrant, transform=None):
+    def __init__(self, csv_file, img_dir, seq_length, seq_range, quadrant, transform=None):
         """
         args: 
             csv_file [str]: path to csv file with labels
@@ -33,6 +33,7 @@ class PlantStressDataset(Dataset):
         self.img_dir = img_dir
         self.transform = transform
         self.seq_length = seq_length
+        self.seq_range = seq_range
         self.quadrant = quadrant
 
     def __len__(self):
@@ -101,10 +102,27 @@ class PlantStressDataset(Dataset):
         sample_id = idx
         exp_id = self.quadrant
         seq_length = self.seq_length
+        seq_range = self.seq_range
+        
+        if (seq_range%seq_length) != 0: raise Exception('seq_range: {} must be evenly divisible by seq_length: {}'.format(seq_range,seq_length))
 
 
+        """
         # handle the edges of the dataset. there must be a more elegant way to do this
-        if sample_id-seq_length<0: sampe_id = sample_id+seq_length
+        if sample_id-seq_length<0: sample_id = sample_id+seq_length
+        """
+        
+        """
+        # this will make an array which goes from t-seq_range to t, spaced at seq_range/seq_length
+        # id: [ 64,  68,  72,  76,  80,  84,  88,  92,  96, 100] for t = 100, range = 40, length = 10
+        time_series = torch.arange(sample_id-(seq_range-(seq_range/seq_length)), sample_id+(seq_range/seq_length), seq_range/seq_length, dtype=int)
+
+
+        # a bit hacky to implement adjustable time series
+        # if the time series predates the start of the experiment, shift it forward
+        start = torch.clone(time_series[0])
+        if time_series[0] < 0: time_series-=start
+        """
 
         if torch.is_tensor(sample_id):
             batch_list = sample_id.tolist()
@@ -113,7 +131,18 @@ class PlantStressDataset(Dataset):
             image = np.zeros((len(batch_list),seq_length,4,256,256))
             capture_time = stress_time = np.zeros((len(batch_list),seq_length))
             for j, super_sample in enumerate(batch_list): 
-                for i, sample in enumerate(range(super_sample-seq_length, super_sample)):
+
+                # this will make an array which goes from t-seq_range to t, spaced at seq_range/seq_length
+                # id: [ 64,  68,  72,  76,  80,  84,  88,  92,  96, 100] for t = 100, range = 40, length = 10
+                time_series = torch.arange(super_sample-(seq_range-(seq_range/seq_length)), super_sample+(seq_range/seq_length), seq_range/seq_length, dtype=int)
+
+                # a bit hacky to implement adjustable time series
+                # if the time series predates the start of the experiment, shift it forward
+                start = torch.clone(time_series[0])
+                if time_series[0] < 0: time_series-=start
+
+                #for i, sample in enumerate(range(super_sample-seq_length, super_sample)):
+                for i, sample in enumerate(time_series.tolist()):
                     # pulls in each of the three labels
                     capture_time[j,i] = self.labels.iloc[sample,1]
                     stress_time[j,i] = self.labels.iloc[sample,2]
@@ -129,7 +158,18 @@ class PlantStressDataset(Dataset):
             image = np.zeros((seq_length,4,256,256))
             # and labels will be [t, label_value]
             capture_time = stress_time = np.zeros((seq_length))
-            for i, sample in enumerate(range(sample_id-seq_length, sample_id)):
+                
+            # this will make an array which goes from t-seq_range to t, spaced at seq_range/seq_length
+            # id: [ 64,  68,  72,  76,  80,  84,  88,  92,  96, 100] for t = 100, range = 40, length = 10
+            time_series = torch.arange(sample_id-(seq_range-(seq_range/seq_length)), sample_id+(seq_range/seq_length), seq_range/seq_length, dtype=int)
+
+            # a bit hacky to implement adjustable time series
+            # if the time series predates the start of the experiment, shift it forward
+            start = torch.clone(time_series[0])
+            if time_series[0] < 0: time_series-=start
+
+            #for i, sample in enumerate(range(sample_id-seq_length, sample_id)):
+            for i, sample in enumerate(time_series.tolist()):
                 capture_time[i] = self.labels.iloc[sample,1]
                 stress_time[i] = self.labels.iloc[sample,2]
             
@@ -139,7 +179,7 @@ class PlantStressDataset(Dataset):
         # constructs dict of image and labels
         #sample = {'image': image, 'capture_time': capture_time, 'stress_time': stress_time}
         # 6/22: changing this to a list to play nicer with pytorch
-        sample = [image, capture_time, stress_time]
+        sample = [image, capture_time, stress_time, time_series]
 
 
         if self.transform:

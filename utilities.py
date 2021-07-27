@@ -1,6 +1,7 @@
 import numpy as np
 from dataloader import PlantStressDataset
 from dataloader import Mask
+from PIL import Image
 
 def net_input(time_list, quadrant, N, experiment_info):
     """ input: 
@@ -59,3 +60,8 @@ def net_input(time_list, quadrant, N, experiment_info):
             net_input[channel,t,:] = masked_sample
 
     return net_input
+
+def composite_rgb(R,G,B): 
+    rgb = np.dstack((R,G,B))
+    img = Image.fromarray(rgb)
+    return img

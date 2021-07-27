@@ -25,12 +25,13 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 # PLANT Hyper-parameters
 sequence_length = 10 
+sequence_range = 40
 input_dim = 4                   # number of image channels
 hidden_dim = [128, 64, 8, 1]    # hidden layer dimensions
 num_layers = 4                  # number of hidden layers
 output_dim = 1                  # size of linear output layer
 batch_size = 1                  # number of samples per batch
-num_epochs = 5                  # loop over entire dataset this many times
+num_epochs = 10                 # loop over entire dataset this many times
 learning_rate = 0.00001            # learning rate for gradient descent
 kernel_size = (3,3)             # kernel size for convolution layer
 
@@ -39,6 +40,7 @@ p_dataset = PlantStressDataset(
         csv_file='/md0/home/gavinstjohn/plant-imaging/images/labels_20210210_01.csv', # csv file containing labels
         img_dir='/md0/home/gavinstjohn/plant-imaging/images/experiment_20210210_1/',# directory containjng images from experiment
         seq_length=sequence_length, # sequence length for LSTM
+        seq_range=sequence_range,
         quadrant=0, # which quadrant of the experiment should be subsampled? 
         transform=Mask(8)) # mask the data based on blue value of 8
 
@@ -46,6 +48,8 @@ p_dataset = PlantStressDataset(
 test_split = 0.2 # 20% for test, 80% for train
 random_seed = 42 # set the seed s/t it's the same no matter what
 shuffle_dataset = True # shuffle dataset? yes please
+
+torch.manual_seed(random_seed)
 
 dataset_size = len(p_dataset) # overall length of dataset
 indices = list(range(dataset_size)) # list of indices
@@ -101,7 +105,7 @@ optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate) # yoinked from
 ### TRAINING LOOP ###
 total_step = len(p_train_loader) # total number of samples in dataset
 for epoch in range(num_epochs): # for each epoch, 
-    for i, (images,capture_times,stress_times) in enumerate(p_train_loader): # loop over each batch in the dataloader
+    for i, (images,capture_times,stress_times,time_series) in enumerate(p_train_loader): # loop over each batch in the dataloader
         # batch size, sequence length, channels, height of image, width of image
         # input.shape = [b, t, c, h, w]
         #               [b, t, 4, 256, 256]
@@ -137,8 +141,9 @@ for epoch in range(num_epochs): # for each epoch,
                    .format(epoch+1, num_epochs, i+1, total_step, loss.item()))
 
 # Save the model checkpoint
-torch.save(model.state_dict(), 'cel_model_100.ckpt')
+torch.save(model.state_dict(), 'cel_model_10_series.ckpt')
 
+#torch.load('/md0/home/gavinstjohn/plant-imaging/cel_model_5_series.ckpt')
 print('TESTING START')
 # model testing is not working, need to yoink a working one
 # Test the model
@@ -149,8 +154,12 @@ with torch.no_grad():
     
     test_loss = 0
     accuracy = 0
+    correct_stressed = 0
+    total_stressed = 0
+    correct_unstressed = 0
+    total_unstressed = 0
 
-    for images,capture_times,stress_times in p_test_loader:
+    for images,capture_times,stress_times,time_series in p_test_loader:
 
         # pretty much a copy of the forward loop
         images = images.reshape(batch_size, sequence_length, 4, 256, 256).to(device, dtype=torch.long)
@@ -170,20 +179,26 @@ with torch.no_grad():
 
 
         outputs, hidden, out = model(images)
-        out = sig(out)
         out = torch.cat((out,1-out),1) # needed for cross entropy loss, shape of (N,C)
         print('out: ', out)
 
         #loss = criterion(out, labels[0])
         test_loss += criterion(out, labels[0]).item()
-
-        ps = torch.exp(out)
-        #equality = (labels.data == ps.max(dim=1)[1])
-        equality = (labels.data == ps)
+        equality = (labels.data == out.argmax())
         accuracy += equality.type(torch.FloatTensor).mean()
 
+        # track distribution of correct and total values
+        if out.argmax()==0 and equality: correct_unstressed+=1
+        elif out.argmax()==1 and equality: correct_stressed+=1
+
+        if labels[0]==0: total_unstressed+=1
+        elif labels[0]==1: total_stressed+=1
+
+
     print('test_loss: ', test_loss)
-    print('accuracy: ', accuracy)
+    print('accuracy: {}/{}'.format(int(accuracy),len(p_test_loader)))
+    print('correct stress predictions: {}/{}'.format(correct_stressed,total_stressed))
+    print('correct unstressed predictions: {}/{}'.format(correct_unstressed,total_unstressed))
     #print('Test Accuracy of the model on the test images: {} %'.format(100 * correct / total)) 
 
 

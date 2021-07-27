@@ -138,6 +138,8 @@ class ConvLSTM(nn.Module):
         #self.lrelu = nn.LeakyReLU(0.01)
         """
 
+
+        self.fc = nn.Linear(256**2, output_dim)
         self.sig = nn.Sigmoid()
 
 
@@ -240,6 +242,7 @@ class ConvLSTM(nn.Module):
             out = self.relu(out)
             """
             
+            out = self.fc(out)
             out = self.sig(out)
 
         return layer_output_list, last_state_list, out

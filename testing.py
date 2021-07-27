@@ -16,7 +16,8 @@ def main():
     dataset = PlantStressDataset(
                 csv_file = root + 'images/labels_20210210_01.csv',
                 img_dir = root + 'images/experiment_20210210_1/',
-                seq_length = 1, 
+                seq_length = 10, 
+                seq_range = 80,
                 quadrant = 0,
                 transform = Mask(8))
                 
@@ -27,18 +28,9 @@ def main():
             shuffle = False)
 
 
-    unstressed = 0
-    stressed = 0
-    for i, (images, capture_times, stress_times) in enumerate(dataloader): 
-        if stress_times == -1: 
-            unstressed += 1
-        else: 
-            stressed += 1
+    for i, (images, capture_times, stress_times, time_series) in enumerate(dataloader): 
+        print(i, time_series)
 
-
-    print('stressed #: ', stressed)
-    print('unstressed #: ', unstressed) 
-    print('%stressed: ', stressed/(stressed+unstressed))
 
 
 
