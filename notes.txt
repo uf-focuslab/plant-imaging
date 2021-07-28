@@ -259,7 +259,7 @@ torch.arange(sample_id-(seq_range-(seq_range/seq_length)), sample_id+(seq_range/
 
 07/27/21: 
 
-first results from epoch=5, lr=0.00001, seq_length = 10, seq_range = 40:
+first results from epoch=5, lr=0.00001, seq_length = 10, seq_range = 40: (cel_model_5_series.ckpt)
 
 test_loss: 46.21
 accuracy: 56/67 ( correct stress predictions: 56/56, correct unstressed predictions: 0/11 )
@@ -269,6 +269,25 @@ They all looked like [0.4952, 0.5048] with each being +/- 0.001
 
 trying some with more epochs
 
-epoch=10: 
+epoch=10: (cel_model_10_series.ckpt)
+
+same overall reults: 
+test_loss:  43.64762884378433
+accuracy: 56/67
+correct stress predictions: 56/56
+correct unstressed predictions: 0/11
+
+however the outs were more polarized: [0.4350, 0.5650] still +/- 0.001
 
 
+trying higher lr now (cel_model_10_series_lr0.0001.ckpt)
+
+same overall results, outs were more polarized [0.038, 0.962] but always the same output pretty much 
+
+sent koppal an update and he said to tackle fixing the stuck output thing first. 
+trying to increase hidden layers now. 
+
+07/28/21: 
+
+running out of memory if i increase hidden layer size even a little. 
+going to try decreasing seq_length, maybe 10 -> 4? with same range? -> [t-36, t-24, t-12, t]

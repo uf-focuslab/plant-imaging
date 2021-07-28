@@ -24,16 +24,19 @@ import sys
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 # PLANT Hyper-parameters
-sequence_length = 10 
+sequence_length = 4 
 sequence_range = 40
 input_dim = 4                   # number of image channels
 hidden_dim = [128, 64, 8, 1]    # hidden layer dimensions
+#hidden_dim = [42000, 27720, 16000, 1] 
+#hidden_dim = [4096, 1024, 256, 1]
+hidden_dim = [512, 256, 128, 1]
 num_layers = 4                  # number of hidden layers
 output_dim = 1                  # size of linear output layer
 batch_size = 1                  # number of samples per batch
 num_epochs = 10                 # loop over entire dataset this many times
-learning_rate = 0.00001            # learning rate for gradient descent
-kernel_size = (3,3)             # kernel size for convolution layer
+learning_rate = 0.0001            # learning rate for gradient descent
+kernel_size = (5,5)             # kernel size for convolution layer
 
 # PLANT dataset/loader
 p_dataset = PlantStressDataset(
@@ -141,7 +144,7 @@ for epoch in range(num_epochs): # for each epoch,
                    .format(epoch+1, num_epochs, i+1, total_step, loss.item()))
 
 # Save the model checkpoint
-torch.save(model.state_dict(), 'cel_model_10_series.ckpt')
+torch.save(model.state_dict(), 'seq_length_4_inc_hidden_layers.ckpt')
 
 #torch.load('/md0/home/gavinstjohn/plant-imaging/cel_model_5_series.ckpt')
 print('TESTING START')
