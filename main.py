@@ -15,6 +15,7 @@ from dataloader import Mask
 from utilities import net_input
 
 from convlstm import ConvLSTM
+from cnn_simple import CNN
 
 from IPython import embed
 import sys
@@ -36,7 +37,7 @@ output_dim = 1                  # size of linear output layer
 batch_size = 1                  # number of samples per batch
 num_epochs = 10                 # loop over entire dataset this many times
 learning_rate = 0.0001            # learning rate for gradient descent
-kernel_size = (5,5)             # kernel size for convolution layer
+kernel_size = 4                 # kernel size for convolution layer
 
 # PLANT dataset/loader
 p_dataset = PlantStressDataset(
@@ -79,6 +80,8 @@ p_test_loader = torch.utils.data.DataLoader(
         sampler=test_sampler) # sample from the test sample
 
 
+### REPLACE WITH CNN ###
+"""
 model = ConvLSTM(input_dim=input_dim, # images have 4 channels, R G B NIR
                  hidden_dim=hidden_dim, # hidden layer dimensions, arbitrarily set
                  kernel_size=kernel_size, # size of the kernel for conv layer, also arbitrarily set
@@ -87,6 +90,9 @@ model = ConvLSTM(input_dim=input_dim, # images have 4 channels, R G B NIR
                  batch_first=True,  # not sure what this setting does
                  bias=True, # also unsure
                  return_all_layers=False).to(device) # also unsure
+                 """
+
+model = CNN(input_dim=input_dim, kernel_size=kernel_size).to(device)
 
 
 # Loss and optimizer
@@ -126,7 +132,9 @@ for epoch in range(num_epochs): # for each epoch,
         labels = labels.to(device, dtype=torch.long) # sends to cuda device and changes datatype
 
         # Forward pass
-        _, _, out = model(images) # out is the output of the linear layer, outputs and hidden are spat out by the lstm
+        #_, _, out = model(images) # out is the output of the linear layer, outputs and hidden are spat out by the lstm
+        out = model(images)
+        breakpoint()
 
         
         out = torch.cat((out,1-out),1) # needed for cross entropy loss, shape of (N,C)

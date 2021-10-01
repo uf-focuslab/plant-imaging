@@ -27,9 +27,10 @@ def main():
             batch_size = 1, 
             shuffle = False)
 
-
     for i, (images, capture_times, stress_times, time_series) in enumerate(dataloader): 
-        print(i, time_series)
+        #print(i, time_series)
+        print(images.size())
+        break
 
 
 

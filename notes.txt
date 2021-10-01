@@ -291,3 +291,16 @@ trying to increase hidden layers now.
 
 running out of memory if i increase hidden layer size even a little. 
 going to try decreasing seq_length, maybe 10 -> 4? with same range? -> [t-36, t-24, t-12, t]
+
+10/01/21: 
+long time no type my friend 
+
+simplifying network time. switching to a cnn using prebuilt pytorch modules. 
+
+current data shape is [batch, depth (time), channels, height, width] 
+for conv3d need       [batch, channels, depth, height, width] 
+
+hard to visualize, not sure how to make that change
+
+actually going to try keeping the same, so time is treated as the channels, and depth is the 4 spectra 
+keep [b,t,c,h,w]
