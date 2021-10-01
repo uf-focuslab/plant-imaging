@@ -28,6 +28,7 @@ class CNN(nn.Module):
 
         self.gap = nn.AdaptiveAvgPool2d((1,1)) # not sure what this is
         self.linear = torch.nn.Linear(512, 1)
+        self.sig = torch.nn.Sigmoid()
 
 
     def forward(self, x): 
@@ -38,4 +39,5 @@ class CNN(nn.Module):
         x = self.gap(x)
         x = torch.flatten(x, 1)
         x = self.linear(x)
+        x = self.sig(x)
         return x

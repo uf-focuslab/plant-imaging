@@ -113,6 +113,7 @@ optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate) # yoinked from
 
 ### TRAINING LOOP ###
 total_step = len(p_train_loader) # total number of samples in dataset
+loss_summary = []
 for epoch in range(num_epochs): # for each epoch, 
     for i, (images,capture_times,stress_times,time_series) in enumerate(p_train_loader): # loop over each batch in the dataloader
         # batch size, sequence length, channels, height of image, width of image
@@ -134,7 +135,6 @@ for epoch in range(num_epochs): # for each epoch,
         # Forward pass
         #_, _, out = model(images) # out is the output of the linear layer, outputs and hidden are spat out by the lstm
         out = model(images)
-        breakpoint()
 
         
         out = torch.cat((out,1-out),1) # needed for cross entropy loss, shape of (N,C)
@@ -145,14 +145,19 @@ for epoch in range(num_epochs): # for each epoch,
         loss.backward()
         print(i)
         optimizer.step()
+        loss_summary.append(loss)
         
         # little status updates
         if (i+1) % 10 == 0:
-            print ('Epoch [{}/{}], Step [{}/{}], Loss: {:.4f}' 
-                   .format(epoch+1, num_epochs, i+1, total_step, loss.item()))
+            loss_summary = np.array(loss_summary).mean()
+            print ('Epoch [{}/{}], Step [{}/{}], Loss over 10 steps: {:.4f}' 
+                   .format(epoch+1, num_epochs, i+1, total_step, loss_summary.item()))
+            loss_summary = []
+
 
 # Save the model checkpoint
-torch.save(model.state_dict(), 'seq_length_4_inc_hidden_layers.ckpt')
+torch.save(model.state_dict(), '3dcnn_1.ckpt')
+
 
 #torch.load('/md0/home/gavinstjohn/plant-imaging/cel_model_5_series.ckpt')
 print('TESTING START')

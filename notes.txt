@@ -304,3 +304,7 @@ hard to visualize, not sure how to make that change
 
 actually going to try keeping the same, so time is treated as the channels, and depth is the 4 spectra 
 keep [b,t,c,h,w]
+
+it runs forward
+
+it runs all the way thru, testing broken atm. 
