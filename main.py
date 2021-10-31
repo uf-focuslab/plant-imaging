@@ -12,12 +12,14 @@ import numpy as np
 
 from dataloader import PlantStressDataset
 from dataloader import Mask
+from dataloader import polarize_plant
 from utilities import net_input
 
 from convlstm import ConvLSTM
 from cnn_simple import CNN
 
 from IPython import embed
+import argparse
 import sys
 
 
@@ -28,16 +30,37 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 sequence_length = 4 
 sequence_range = 40
 input_dim = 4                   # number of image channels
-hidden_dim = [128, 64, 8, 1]    # hidden layer dimensions
-#hidden_dim = [42000, 27720, 16000, 1] 
-#hidden_dim = [4096, 1024, 256, 1]
-hidden_dim = [512, 256, 128, 1]
 num_layers = 4                  # number of hidden layers
 output_dim = 1                  # size of linear output layer
-batch_size = 1                  # number of samples per batch
+batch_size = 1                  # number of samples per batch // batch size >1 broken right now
 num_epochs = 10                 # loop over entire dataset this many times
 learning_rate = 0.0001            # learning rate for gradient descent
 kernel_size = 4                 # kernel size for convolution layer
+
+# cmd arguments
+parser = argparse.ArgumentParser()
+
+# -te MODEL_FILE -tr MODEL_FILE
+parser.add_argument("-te", "--test", dest="test_file", default=False, help="filename of model file to be tested")
+parser.add_argument("-tr", "--train", dest="train_file", default=False,  help="filename of model file to be written to after training")
+
+args = parser.parse_args()
+train_file, test_file = args.train_file, args.test_file
+
+print("train: {}, test: {}".format(train_file, test_file))
+
+# possible permutations: 
+# neither specified: runs through training and testing without saving model file
+# train specified: runs through training and saves to specified file before testing 
+# test specified: does not train, imports test file and tests
+# both specified (must be same file): runs through training and saves to specified file before testing specified file, same as case 1
+if (type(train_file)==str and type(test_file)==str) and test_file!=train_file: 
+    raise Exception("Both train and test files are specifed but not the same file")
+
+# experimenting whether network can pick up on extremely simplified images, polarize_plant makes unstressed images black, stressed stay as plants. 
+multi_transform = transforms.Compose([
+        Mask(8), 
+        polarize_plant,])
 
 # PLANT dataset/loader
 p_dataset = PlantStressDataset(
@@ -46,20 +69,21 @@ p_dataset = PlantStressDataset(
         seq_length=sequence_length, # sequence length for LSTM
         seq_range=sequence_range,
         quadrant=0, # which quadrant of the experiment should be subsampled? 
-        transform=Mask(8)) # mask the data based on blue value of 8
+        transform=polarize_plant(True)) # mask the data based on blue value of 8
 
 # dataset split up code:: 
 test_split = 0.2 # 20% for test, 80% for train
 random_seed = 42 # set the seed s/t it's the same no matter what
-shuffle_dataset = True # shuffle dataset? yes please
+shuffle_dataset = False # shuffle dataset? yes please
 
+# set the manual seed
 torch.manual_seed(random_seed)
 
 dataset_size = len(p_dataset) # overall length of dataset
 indices = list(range(dataset_size)) # list of indices
 split = int(np.floor(test_split * dataset_size)) # split location
 if shuffle_dataset:  # yes
-    np.random.seed(random_seed) # set the seed
+    np.random.seed(random_seed) # set the seed 
     np.random.shuffle(indices) # shuffle up the indices
 train_indices, test_indices = indices[split:], indices[:split] # do the split
 
@@ -80,29 +104,17 @@ p_test_loader = torch.utils.data.DataLoader(
         sampler=test_sampler) # sample from the test sample
 
 
-### REPLACE WITH CNN ###
-"""
-model = ConvLSTM(input_dim=input_dim, # images have 4 channels, R G B NIR
-                 hidden_dim=hidden_dim, # hidden layer dimensions, arbitrarily set
-                 kernel_size=kernel_size, # size of the kernel for conv layer, also arbitrarily set
-                 num_layers=num_layers, # number of hidden layers
-                 output_dim=output_dim, # linear output layer dimension
-                 batch_first=True,  # not sure what this setting does
-                 bias=True, # also unsure
-                 return_all_layers=False).to(device) # also unsure
-                 """
-
+# CNN model 
 model = CNN(input_dim=input_dim, kernel_size=kernel_size).to(device)
 
 
 # Loss and optimizer
-#criterion = nn.CrossEntropyLoss()
-#criterion = nn.MSELoss() # couldn't get cel criterion to work so tried mse and it ran
-#criterion = nn.BCELoss() # for binary classification
-# dont think bceloss is working great, would need to do oversampling
-# trying crossentropyloss with normalized weights
+# trying crossentropyloss with normalized eights
 nSamples = [62, 277] # [unstressed, stressed]
 normedWeights = [1 - (x / sum(nSamples)) for x in nSamples]
+print(normedWeights)
+# test manually set weights
+#normedWeights = [0.1, 0.9]
 normedWeights = torch.FloatTensor(normedWeights).to(device)
 criterion = nn.CrossEntropyLoss(weight=normedWeights) # note: cel needs dtype=long for out/labels
 
@@ -111,55 +123,72 @@ criterion = nn.CrossEntropyLoss(weight=normedWeights) # note: cel needs dtype=lo
 optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate) # yoinked from example, not sure what the best optimizer is
 
 
-### TRAINING LOOP ###
-total_step = len(p_train_loader) # total number of samples in dataset
-loss_summary = []
-for epoch in range(num_epochs): # for each epoch, 
-    for i, (images,capture_times,stress_times,time_series) in enumerate(p_train_loader): # loop over each batch in the dataloader
-        # batch size, sequence length, channels, height of image, width of image
-        # input.shape = [b, t, c, h, w]
-        #               [b, t, 4, 256, 256]
-        images = images.reshape(batch_size, sequence_length, 4, 256, 256).to(device, dtype=torch.long)
+# only activate training loop if a destination model training file is specified
+if train_file: 
+    ### TRAINING LOOP ###
+    total_step = len(p_train_loader) # total number of samples in dataset
+    loss_summary = []
+    for epoch in range(num_epochs): # for each epoch, 
+        for i, (images,capture_times,stress_times,time_series) in enumerate(p_train_loader): # loop over each batch in the dataloader
+            # skip early values based on hyperparameters s/t unstressed samples are not oversampled
+            # if the time_series ends at a value which is too low s/t the beginning of the stime_series predates
+            # the start of the experiment, skip that iteration.
+            # this will cause some problems with the test/val split 
+            # need to adjust size of dataset. 
+            if time_series[-1][-1] < sequence_range-(sequence_range/sequence_length): continue
+            
+            # batch size, sequence length, channels, height of image, width of image
+            # input.shape = [b, t, c, h, w]
+            #               [b, t, 4, 256, 256]
+            images = images.reshape(batch_size, sequence_length, 4, 256, 256).to(device, dtype=torch.long)
 
-        #labels = stress_times
-        # experiment to try and create binary classifier instead of predicting time since stress
-        #labels[labels>0] = 1
-        #labels[labels==-1] = 0
-        labels = stress_times[:,-1] # only grab the key sample
-        labels = labels.reshape(len(labels),1) # rotate to be vertical
-        labels[labels>0] = 1 # binary classify
-        labels[labels==-1] = 0
+            #labels = stress_times
+            # experiment to try and create binary classifier instead of predicting time since stress
+            #labels[labels>0] = 1
+            #labels[labels==-1] = 0
+            labels = stress_times[:,-1] # only grab the key sample
+            labels = labels.reshape(len(labels),1) # rotate to be vertical
+            labels[labels>0] = 1 # binary classify
+            labels[labels==-1] = 0
 
-        labels = labels.to(device, dtype=torch.long) # sends to cuda device and changes datatype
+            labels = labels.to(device, dtype=torch.long) # sends to cuda device and changes datatype
 
-        # Forward pass
-        #_, _, out = model(images) # out is the output of the linear layer, outputs and hidden are spat out by the lstm
-        out = model(images)
+            # Forward pass
+            #_, _, out = model(images) # out is the output of the linear layer, outputs and hidden are spat out by the lstm
+            out = model(images)
 
-        
-        out = torch.cat((out,1-out),1) # needed for cross entropy loss, shape of (N,C)
-        loss = criterion(out, labels[0])
-        
-        # Backward and optimize
-        optimizer.zero_grad()
-        loss.backward()
-        print(i)
-        optimizer.step()
-        loss_summary.append(loss)
-        
-        # little status updates
-        if (i+1) % 10 == 0:
-            loss_summary = np.array(loss_summary).mean()
-            print ('Epoch [{}/{}], Step [{}/{}], Loss over 10 steps: {:.4f}' 
-                   .format(epoch+1, num_epochs, i+1, total_step, loss_summary.item()))
-            loss_summary = []
-
-
-# Save the model checkpoint
-torch.save(model.state_dict(), '3dcnn_1.ckpt')
+            
+            out = torch.cat((out,1-out),1) # needed for cross entropy loss, shape of (N,C)
+            loss = criterion(out, labels[0])
+            
+            # Backward and optimize
+            optimizer.zero_grad()
+            loss.backward()
+            print(i)
+            optimizer.step()
+            loss_summary.append(loss.item())
+            
+            # little status updates
+            if (i+1) % 10 == 0:
+                loss_summary = np.mean(np.array(loss_summary))
+                print ('Epoch [{}/{}], Step [{}/{}], Loss over 10 steps: {:.4f}' 
+                       .format(epoch+1, num_epochs, i+1, total_step, loss_summary.item()))
+                loss_summary = []
 
 
-#torch.load('/md0/home/gavinstjohn/plant-imaging/cel_model_5_series.ckpt')
+# Save the model checkpoint if a train_file is specified
+if type(train_file)==str: 
+    torch.save(model.state_dict(), train_file)
+
+# activate no matter what: if train file is specified -> on that file
+# if train file is not specified -> on test file
+# if neither are specified -> on one-off model
+if type(test_file)==str: 
+    #torch.load('/md0/home/gavinstjohn/plant-imaging/' + test_file)
+    model.load_state_dict(torch.load('/md0/home/gavinstjohn/plant-imaging/' + test_file, map_location="cuda:0"))
+    model.to(device)
+    print('MODEL LOADED')
+    print(model)
 print('TESTING START')
 # model testing is not working, need to yoink a working one
 # Test the model
@@ -187,20 +216,32 @@ with torch.no_grad():
         """
         labels = stress_times[:,-1] # only grab the key sample
         labels = labels.reshape(len(labels),1) # rotate to be vertical
-        labels[labels>0] = 1 # binary classify
+        labels[labels>-1] = 1 # binary classify
         labels[labels==-1] = 0
         print('labels: ', labels)
 
         labels = labels.to(device, dtype=torch.long)
 
 
-        outputs, hidden, out = model(images)
+        out = model(images)
         out = torch.cat((out,1-out),1) # needed for cross entropy loss, shape of (N,C)
         print('out: ', out)
+        print('')
+
+        print('target: ', labels[0][0].item(), ' vs: ', out[0])
+
+        print('')
 
         #loss = criterion(out, labels[0])
         test_loss += criterion(out, labels[0]).item()
         equality = (labels.data == out.argmax())
+        if not equality: 
+            print("images: ", images)
+            print("capture_times: ", capture_times)
+            print("stress_times: ", stress_times)
+            print("time_series: ", time_series)
+            print("labels: ", labels)
+            breakpoint()
         accuracy += equality.type(torch.FloatTensor).mean()
 
         # track distribution of correct and total values

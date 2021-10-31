@@ -138,14 +138,21 @@ class PlantStressDataset(Dataset):
 
                 # a bit hacky to implement adjustable time series
                 # if the time series predates the start of the experiment, shift it forward
+                # i think this is causing oversampling of unstressed samples. changing it to 
+                # just skip ones that predate t=0
+                # this needs to be done outside the dataloader s/t time samples are 
+                # not requested which predate experiment start
                 start = torch.clone(time_series[0])
-                if time_series[0] < 0: time_series-=start
+                if time_series[0] < 0: 
+                    raise Exception('Constructed time-series predates experiment start')
 
                 #for i, sample in enumerate(range(super_sample-seq_length, super_sample)):
                 for i, sample in enumerate(time_series.tolist()):
                     # pulls in each of the three labels
                     capture_time[j,i] = self.labels.iloc[sample,1]
+                    print("capture_time: ", capture_time)
                     stress_time[j,i] = self.labels.iloc[sample,2]
+                    print("stress_time: ", stress_time)
                     
                     image[j,i] = self.__grab__(sample)
 
@@ -229,6 +236,42 @@ class Mask(object):
         # spit back out
         return sample
 
+class polarize_plant(object):
+    """
+    Polarize dataset, if sample is stressed -> leave as is (plant image)
+                                 unstressed -> make all black (0)
+
+    Args: 
+        p_threshold: True/False
+
+    """
+
+    def __init__(self, p_status):
+        # make sure the p_status is the correct datatype
+        assert isinstance(p_status, bool)
+        # set the internal variable to the passed in p_status
+        self.p_status = p_status
+
+    def __call__(self, sample):
+        images = sample[0]
+        # if p_status (polarize) is turned on
+        if self.p_status: 
+            # for each stress_time in the sample: 
+            for i,t in enumerate(sample[2]): 
+                # if the time step is unstressed: 
+                if t==-1: 
+                    # (hopefully) darken the unstressed image by 25%, rounded up
+                    images[i][:] = np.ceil(images[i][:]*0.25)
+                # otherwise, the time step is stressed: 
+                #else: 
+                    # plant is stressed >:), do nothing in fact dont even enter this case
+
+
+            # put the (now polarized) image stack back into the sample dict
+            sample[0] = images
+
+        # spit back out
+        return sample
 
 def main():
     """plant_dataset = PlantStressDataset(
