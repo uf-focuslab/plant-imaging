@@ -71,6 +71,19 @@ p_dataset = PlantStressDataset(
         quadrant=0, # which quadrant of the experiment should be subsampled? 
         transform=polarize_plant(True)) # mask the data based on blue value of 8
 
+# annoying problem: when constructing time_series @ low indices it tries to pull negative time values. 
+# initially the bandaid fix was when it attempted that to push the value forward to t=0, 
+# that resulted in oversampling time_series which originated @ t=0
+# so new fix: create a subset which is pushed forward, then make that the target of the enumerate iterator
+# after inside the loop, sample from original (unsubsampled dataset) s/t the time_series can still be constructed
+
+push_value = sequence_range-(sequence_range/sequence_length)
+if not (int(push_value) == push_value): 
+    raise Exception('sequence_range and sequence_length aren\'t lining up to create int indices, check them')
+
+push_indices = range(int(push_value), len(p_dataset))
+push_p_dataset = torch.utils.data.Subset(p_dataset,push_indices) 
+
 # dataset split up code:: 
 test_split = 0.2 # 20% for test, 80% for train
 random_seed = 42 # set the seed s/t it's the same no matter what
@@ -79,7 +92,8 @@ shuffle_dataset = False # shuffle dataset? yes please
 # set the manual seed
 torch.manual_seed(random_seed)
 
-dataset_size = len(p_dataset) # overall length of dataset
+# this needs to be overhauled s/t stressed and unstressed samples are equally represented in test/train
+dataset_size = len(push_p_dataset) # overall length of dataset
 indices = list(range(dataset_size)) # list of indices
 split = int(np.floor(test_split * dataset_size)) # split location
 if shuffle_dataset:  # yes
@@ -110,7 +124,9 @@ model = CNN(input_dim=input_dim, kernel_size=kernel_size).to(device)
 
 # Loss and optimizer
 # trying crossentropyloss with normalized eights
-nSamples = [62, 277] # [unstressed, stressed]
+# this needs to be automatically set eventually
+# push value pushes unstressed values out
+nSamples = [62-push_value, 277] # [unstressed, stressed]
 normedWeights = [1 - (x / sum(nSamples)) for x in nSamples]
 print(normedWeights)
 # test manually set weights

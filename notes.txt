@@ -308,3 +308,19 @@ keep [b,t,c,h,w]
 it runs forward
 
 it runs all the way thru, testing broken atm. 
+
+
+new date style: 
+09/11/21: (nov)
+trying to solve issue of oversampling low index images. this is fixing the bandaid of pushing low index values forward if they attempt to grab negative index images. 
+doing this by creating a subsample depending on shape of time-series. then using that dataset as the target of the enumerate call in the main loop 
+however, it doesn't get used beyond that, the original dataset gets sampled. 
+need to see if sample index changes. ie i want to sample dataset 1 which goes from 0-300, however the 
+time series is shaped like t = [0, 10, 20, 30] so i only want to sample 30-300, 
+if i create a subset which is 30-300, does it stay t = 30-300 or change to 0-270. 
+if the latter is the case, i can push it forward but would prefer not to.  
+
+^ this is the case, need to push forward by: sequence_range-(sequence_range/sequence_length)
+also need to write an exception s/t a range/length can't be selected which is not ints
+
+got this partly implemented, todo: test/train split, implement weighted sampling and then implement in loop. 
