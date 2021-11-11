@@ -93,30 +93,56 @@ shuffle_dataset = False # shuffle dataset? yes please
 torch.manual_seed(random_seed)
 
 # this needs to be overhauled s/t stressed and unstressed samples are equally represented in test/train
-dataset_size = len(push_p_dataset) # overall length of dataset
+# generate two sets of dataloaders, one to sample from (dataset) and one to point the enumerator at (push_dataset)
+"""
+dataset_size = len(p_dataset)
 indices = list(range(dataset_size)) # list of indices
 split = int(np.floor(test_split * dataset_size)) # split location
+"""
+
+push_dataset_size = len(push_p_dataset) # overall length of dataset
+push_indices = list(range(push_dataset_size)) # list of indices
+push_split = int(np.floor(test_split * push_dataset_size)) # split location
 if shuffle_dataset:  # yes
     np.random.seed(random_seed) # set the seed 
-    np.random.shuffle(indices) # shuffle up the indices
-train_indices, test_indices = indices[split:], indices[:split] # do the split
+#    np.random.shuffle(indices) # shuffle up the indices
+    np.random.shuffle(push_indices)
 
+#train_indices, test_indices = indices[split:], indices[:split] # do the split
+push_train_indices, push_test_indices = push_indices[push_split:], push_indices[:push_split] # do the split
+
+"""
 train_sampler = SubsetRandomSampler(train_indices) # use subsetrandomsampler from pytorch
 test_sampler = SubsetRandomSampler(test_indices) # samples indices randomly 
+"""
 
+push_train_sampler = SubsetRandomSampler(push_train_indices) # use subsetrandomsampler from pytorch
+push_test_sampler = SubsetRandomSampler(push_test_indices) # samples indices randomly 
 
+# use push_ dataloaders to generate which samples to grab, but actually grab them directly from the p_dataset
+"""
 p_train_loader = torch.utils.data.DataLoader(
         dataset=p_dataset, # choose dataset
         batch_size=batch_size, # set batch size
         drop_last=True, # drop final batch, it often is not divisible by the batch size and breaks stuff
         sampler=train_sampler) # sample from the train sample
-
 p_test_loader = torch.utils.data.DataLoader(
         dataset=p_dataset, # choose dataset
         batch_size=batch_size, # set batch size
         drop_last=True, # drop final batch, it often is not divisible by the batch size and breaks stuff
         sampler=test_sampler) # sample from the test sample
+        """
 
+push_p_train_loader = torch.utils.data.DataLoader(
+        dataset=push_p_dataset, # choose dataset
+        batch_size=batch_size, # set batch size
+        drop_last=True, # drop final batch, it often is not divisible by the batch size and breaks stuff
+        sampler=push_train_sampler) # sample from the train sample
+push_p_test_loader = torch.utils.data.DataLoader(
+        dataset=push_p_dataset, # choose dataset
+        batch_size=batch_size, # set batch size
+        drop_last=True, # drop final batch, it often is not divisible by the batch size and breaks stuff
+        sampler=push_test_sampler) # sample from the test sample
 
 # CNN model 
 model = CNN(input_dim=input_dim, kernel_size=kernel_size).to(device)
@@ -142,17 +168,25 @@ optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate) # yoinked from
 # only activate training loop if a destination model training file is specified
 if train_file: 
     ### TRAINING LOOP ###
-    total_step = len(p_train_loader) # total number of samples in dataset
+    total_step = len(push_p_train_loader) # total number of samples in dataset
     loss_summary = []
     for epoch in range(num_epochs): # for each epoch, 
-        for i, (images,capture_times,stress_times,time_series) in enumerate(p_train_loader): # loop over each batch in the dataloader
+        for i, (sample_id,_,_,_,_) in enumerate(push_p_train_loader): # loop over each batch in the dataloader
             # skip early values based on hyperparameters s/t unstressed samples are not oversampled
             # if the time_series ends at a value which is too low s/t the beginning of the stime_series predates
             # the start of the experiment, skip that iteration.
             # this will cause some problems with the test/val split 
             # need to adjust size of dataset. 
-            if time_series[-1][-1] < sequence_range-(sequence_range/sequence_length): continue
-            
+            # regrab the values out of the main dataset with an i value pushed from the enumerator
+            _, images, _, stress_times, time_series = p_dataset[int(sample_id)]
+            images = torch.Tensor(images)
+            stress_times = torch.Tensor(stress_times)
+
+            #time_series = torch.Tensor(time_series)
+            # this should NOT pop anymore
+            if time_series[-1] < push_value:
+                raise Exception('it wants samples predating experiment start')
+
             # batch size, sequence length, channels, height of image, width of image
             # input.shape = [b, t, c, h, w]
             #               [b, t, 4, 256, 256]
@@ -162,11 +196,12 @@ if train_file:
             # experiment to try and create binary classifier instead of predicting time since stress
             #labels[labels>0] = 1
             #labels[labels==-1] = 0
-            labels = stress_times[:,-1] # only grab the key sample
-            labels = labels.reshape(len(labels),1) # rotate to be vertical
+            labels = stress_times[-1] # only grab the key sample
+            #labels = labels.reshape(len(labels),1) # rotate to be vertical ### YO FUTURE GAVIN FIXING THE BATCHSIZZE THING
             labels[labels>0] = 1 # binary classify
             labels[labels==-1] = 0
 
+            labels = torch.Tensor([labels.item()])
             labels = labels.to(device, dtype=torch.long) # sends to cuda device and changes datatype
 
             # Forward pass
@@ -175,7 +210,7 @@ if train_file:
 
             
             out = torch.cat((out,1-out),1) # needed for cross entropy loss, shape of (N,C)
-            loss = criterion(out, labels[0])
+            loss = criterion(out, labels)
             
             # Backward and optimize
             optimizer.zero_grad()
@@ -220,8 +255,13 @@ with torch.no_grad():
     correct_unstressed = 0
     total_unstressed = 0
 
-    for images,capture_times,stress_times,time_series in p_test_loader:
+    for i, (sample_id,_,_,_,_) in enumerate(push_p_test_loader):
 
+        _, images, _, stress_times, time_series = p_dataset[int(sample_id)]
+
+        images = torch.Tensor(images)
+        stress_times = torch.Tensor(stress_times)
+        #time_series = torch.Tensor(time_series)
         # pretty much a copy of the forward loop
         images = images.reshape(batch_size, sequence_length, 4, 256, 256).to(device, dtype=torch.long)
 
@@ -230,35 +270,35 @@ with torch.no_grad():
         labels[labels>0] = 1
         labels[labels==-1] = 0
         """
-        labels = stress_times[:,-1] # only grab the key sample
-        labels = labels.reshape(len(labels),1) # rotate to be vertical
+        labels = stress_times[-1] # only grab the key sample
+        #labels = labels.reshape(len(labels),1) # rotate to be vertical ### YO FUTURE GAVIN FIXING THE BATCH SIZE THING
         labels[labels>-1] = 1 # binary classify
         labels[labels==-1] = 0
-        print('labels: ', labels)
 
+        labels = torch.Tensor([labels.item()])
         labels = labels.to(device, dtype=torch.long)
-
 
         out = model(images)
         out = torch.cat((out,1-out),1) # needed for cross entropy loss, shape of (N,C)
-        print('out: ', out)
-        print('')
 
-        print('target: ', labels[0][0].item(), ' vs: ', out[0])
+        print('###')
+        print('i: ', i)
+        print("stress_times: ", stress_times)
+        print("time_series: ", time_series)
+        print('target: ', labels.item(), ' vs: ', out[0])
+        
 
-        print('')
 
-        #loss = criterion(out, labels[0])
-        test_loss += criterion(out, labels[0]).item()
+        #loss = criterion(out, labels)
+        test_loss += criterion(out, labels)
         equality = (labels.data == out.argmax())
         if not equality: 
-            print("images: ", images)
-            print("capture_times: ", capture_times)
-            print("stress_times: ", stress_times)
-            print("time_series: ", time_series)
-            print("labels: ", labels)
-            breakpoint()
+            print('WRONG')
+        else: 
+            print('RIGHT')
         accuracy += equality.type(torch.FloatTensor).mean()
+        print('###')
+        print('')
 
         # track distribution of correct and total values
         if out.argmax()==0 and equality: correct_unstressed+=1
@@ -269,7 +309,7 @@ with torch.no_grad():
 
 
     print('test_loss: ', test_loss)
-    print('accuracy: {}/{}'.format(int(accuracy),len(p_test_loader)))
+    print('accuracy: {}/{}'.format(int(accuracy),len(push_p_test_loader)))
     print('correct stress predictions: {}/{}'.format(correct_stressed,total_stressed))
     print('correct unstressed predictions: {}/{}'.format(correct_unstressed,total_unstressed))
     #print('Test Accuracy of the model on the test images: {} %'.format(100 * correct / total)) 

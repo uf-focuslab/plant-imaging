@@ -324,3 +324,8 @@ if the latter is the case, i can push it forward but would prefer not to.
 also need to write an exception s/t a range/length can't be selected which is not ints
 
 got this partly implemented, todo: test/train split, implement weighted sampling and then implement in loop. 
+
+11/11/21: 
+this is gonna pitch a fit when batch sizes come into play. 
+
+todo: weightedrandomsampler ---> data augmentation

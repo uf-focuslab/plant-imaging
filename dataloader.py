@@ -186,7 +186,7 @@ class PlantStressDataset(Dataset):
         # constructs dict of image and labels
         #sample = {'image': image, 'capture_time': capture_time, 'stress_time': stress_time}
         # 6/22: changing this to a list to play nicer with pytorch
-        sample = [image, capture_time, stress_time, time_series]
+        sample = [sample_id, image, capture_time, stress_time, time_series]
 
 
         if self.transform:
@@ -218,7 +218,7 @@ class Mask(object):
 
     def __call__(self, sample):
         # pull the image stack out of the sample dict
-        images = sample[0]
+        images = sample[1]
 
         # init the mask on the blue layer of the stack 
         mask = images[0][1] #[1] = blue
@@ -231,7 +231,7 @@ class Mask(object):
         masked_images = images*mask
         
         # put the (now masked) image stack back into the sample dict
-        sample[0] = masked_images
+        sample[1] = masked_images
 
         # spit back out
         return sample
@@ -253,11 +253,11 @@ class polarize_plant(object):
         self.p_status = p_status
 
     def __call__(self, sample):
-        images = sample[0]
+        images = sample[1]
         # if p_status (polarize) is turned on
         if self.p_status: 
             # for each stress_time in the sample: 
-            for i,t in enumerate(sample[2]): 
+            for i,t in enumerate(sample[3]): 
                 # if the time step is unstressed: 
                 if t==-1: 
                     # (hopefully) darken the unstressed image by 25%, rounded up
@@ -268,7 +268,7 @@ class polarize_plant(object):
 
 
             # put the (now polarized) image stack back into the sample dict
-            sample[0] = images
+            sample[1] = images
 
         # spit back out
         return sample
