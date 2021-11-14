@@ -108,6 +108,26 @@ if shuffle_dataset:  # yes
 #    np.random.shuffle(indices) # shuffle up the indices
     np.random.shuffle(push_indices)
 
+# setting up sample weights for weightedRandomSampler
+# goal: train dataset has equal # of stressed and unstressed samples
+# count # of stressed / unstressed samples
+nSamples = [0, 0] # [unstressed, stressed] 
+target = torch.zeros(len(push_p_dataset))
+for i in range(len(push_p_dataset)):
+    _,_,_,stress_times,_ =push_p_dataset[i]
+    label = stress_times[-1]
+    if label>0:     
+        nSamples[1] += 1
+        target[i] = 1
+    elif label==-1: 
+        nSamples[0] += 1
+        target[i] = 0
+
+
+weight = 1. / torch.Tensor(nSamples)
+push_indices = torch.Tensor(push_indices).long()
+samples_weight = torch.Tensor([weight[int(t)] for t in target[push_indices]])
+
 #train_indices, test_indices = indices[split:], indices[:split] # do the split
 push_train_indices, push_test_indices = push_indices[push_split:], push_indices[:push_split] # do the split
 

@@ -329,3 +329,6 @@ got this partly implemented, todo: test/train split, implement weighted sampling
 this is gonna pitch a fit when batch sizes come into play. 
 
 todo: weightedrandomsampler ---> data augmentation
+
+11/14/21: 
+weighted random sampler is harder to implement than i thought. status: have a tensor of weights. not sure how to squish that with the train/test split. 
