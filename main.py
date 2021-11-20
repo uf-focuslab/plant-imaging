@@ -84,6 +84,10 @@ if not (int(push_value) == push_value):
 push_indices = range(int(push_value), len(p_dataset))
 push_p_dataset = torch.utils.data.Subset(p_dataset,push_indices) 
 
+push_indices = torch.Tensor(range(len(push_p_dataset)))
+# after push_p_dataset has been setup we can switch the reference frame of the indices from pre-push to post push
+# ie: pre- [0:300ish], post- [30:300ish] --> [0:300ish-30]
+
 # dataset split up code:: 
 test_split = 0.2 # 20% for test, 80% for train
 random_seed = 42 # set the seed s/t it's the same no matter what
@@ -92,21 +96,26 @@ shuffle_dataset = False # shuffle dataset? yes please
 # set the manual seed
 torch.manual_seed(random_seed)
 
-# this needs to be overhauled s/t stressed and unstressed samples are equally represented in test/train
-# generate two sets of dataloaders, one to sample from (dataset) and one to point the enumerator at (push_dataset)
-"""
-dataset_size = len(p_dataset)
-indices = list(range(dataset_size)) # list of indices
-split = int(np.floor(test_split * dataset_size)) # split location
-"""
 
-push_dataset_size = len(push_p_dataset) # overall length of dataset
-push_indices = list(range(push_dataset_size)) # list of indices
-push_split = int(np.floor(test_split * push_dataset_size)) # split location
 if shuffle_dataset:  # yes
     np.random.seed(random_seed) # set the seed 
 #    np.random.shuffle(indices) # shuffle up the indices
     np.random.shuffle(push_indices)
+
+# TRAIN / TEST SPLIT
+
+randomized_pushed_indices = torch.randperm(push_indices.nelement())
+r_push_indices = push_indices.view(-1)[randomized_pushed_indices].view(push_indices.size())
+# r_push_indices is a randomized tensor of the push_indices [push_value:len(p_dataset)]
+
+split = int(np.floor(test_split * len(r_push_indices))) # split location
+
+# split them suckers up
+test_indices, train_indices = r_push_indices[:split], r_push_indices[split:]
+# results in two lists of randomized indices
+
+push_dataset_size = len(push_p_dataset) # overall length of dataset
+push_indices_temp = list(range(push_dataset_size)) # list of indices
 
 # setting up sample weights for weightedRandomSampler
 # goal: train dataset has equal # of stressed and unstressed samples
@@ -125,19 +134,35 @@ for i in range(len(push_p_dataset)):
 
 
 weight = 1. / torch.Tensor(nSamples)
-push_indices = torch.Tensor(push_indices).long()
-samples_weight = torch.Tensor([weight[int(t)] for t in target[push_indices]])
+push_indices_temp = torch.Tensor(push_indices_temp).long()
+samples_weight = torch.Tensor([weight[int(t)] for t in target[push_indices_temp]])
 
-#train_indices, test_indices = indices[split:], indices[:split] # do the split
-push_train_indices, push_test_indices = push_indices[push_split:], push_indices[:push_split] # do the split
+train_sampler = torch.utils.data.WeightedRandomSampler(samples_weight,len(samples_weight))
+
+train_loader = torch.utils.data.DataLoader( # train_loader is setup from pushed indices, this will generate sample_id 's and then use those sample ids in the training loop to pull from the normal p_dataset
+        dataset = push_p_dataset,  
+        batch_size = batch_size,
+        drop_last=True,
+        sampler=train_sampler)
+
+test_sampler = torch.utils.data.SubsetRandomSampler(test_indices)
+
+test_loader = torch.utils.data.DataLoader(
+        dataset = push_p_dataset, 
+        batch_size = batch_size,
+        drop_last = True, 
+        sampler = test_sampler)
+
+
+
 
 """
 train_sampler = SubsetRandomSampler(train_indices) # use subsetrandomsampler from pytorch
 test_sampler = SubsetRandomSampler(test_indices) # samples indices randomly 
 """
 
-push_train_sampler = SubsetRandomSampler(push_train_indices) # use subsetrandomsampler from pytorch
-push_test_sampler = SubsetRandomSampler(push_test_indices) # samples indices randomly 
+#push_train_sampler = SubsetRandomSampler(push_train_indices) # use subsetrandomsampler from pytorch
+#push_test_sampler = SubsetRandomSampler(push_test_indices) # samples indices randomly 
 
 # use push_ dataloaders to generate which samples to grab, but actually grab them directly from the p_dataset
 """
@@ -153,6 +178,7 @@ p_test_loader = torch.utils.data.DataLoader(
         sampler=test_sampler) # sample from the test sample
         """
 
+"""
 push_p_train_loader = torch.utils.data.DataLoader(
         dataset=push_p_dataset, # choose dataset
         batch_size=batch_size, # set batch size
@@ -163,6 +189,7 @@ push_p_test_loader = torch.utils.data.DataLoader(
         batch_size=batch_size, # set batch size
         drop_last=True, # drop final batch, it often is not divisible by the batch size and breaks stuff
         sampler=push_test_sampler) # sample from the test sample
+        """
 
 # CNN model 
 model = CNN(input_dim=input_dim, kernel_size=kernel_size).to(device)
@@ -179,6 +206,7 @@ print(normedWeights)
 #normedWeights = [0.1, 0.9]
 normedWeights = torch.FloatTensor(normedWeights).to(device)
 criterion = nn.CrossEntropyLoss(weight=normedWeights) # note: cel needs dtype=long for out/labels
+criterion = nn.CrossEntropyLoss()
 
 # optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate) # yoinked from example, not sure what the best optimizer is
 # changed to SGD from adam just for a test, adam is supposed to have much faster convergence
@@ -188,10 +216,11 @@ optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate) # yoinked from
 # only activate training loop if a destination model training file is specified
 if train_file: 
     ### TRAINING LOOP ###
-    total_step = len(push_p_train_loader) # total number of samples in dataset
+    total_step = len(train_loader) # total number of samples in dataset
     loss_summary = []
+    sample_distribution = torch.Tensor([0, 0])
     for epoch in range(num_epochs): # for each epoch, 
-        for i, (sample_id,_,_,_,_) in enumerate(push_p_train_loader): # loop over each batch in the dataloader
+        for i, (sample_id,_,_,_,_) in enumerate(train_loader): # loop over each batch in the dataloader
             # skip early values based on hyperparameters s/t unstressed samples are not oversampled
             # if the time_series ends at a value which is too low s/t the beginning of the stime_series predates
             # the start of the experiment, skip that iteration.
@@ -220,6 +249,7 @@ if train_file:
             #labels = labels.reshape(len(labels),1) # rotate to be vertical ### YO FUTURE GAVIN FIXING THE BATCHSIZZE THING
             labels[labels>0] = 1 # binary classify
             labels[labels==-1] = 0
+            sample_distribution[int(labels)] += 1
 
             labels = torch.Tensor([labels.item()])
             labels = labels.to(device, dtype=torch.long) # sends to cuda device and changes datatype
@@ -245,6 +275,9 @@ if train_file:
                 print ('Epoch [{}/{}], Step [{}/{}], Loss over 10 steps: {:.4f}' 
                        .format(epoch+1, num_epochs, i+1, total_step, loss_summary.item()))
                 loss_summary = []
+
+print('Training Sample Distribution: {}'.format(sample_distribution))
+
 
 
 # Save the model checkpoint if a train_file is specified
@@ -275,7 +308,7 @@ with torch.no_grad():
     correct_unstressed = 0
     total_unstressed = 0
 
-    for i, (sample_id,_,_,_,_) in enumerate(push_p_test_loader):
+    for i, (sample_id,_,_,_,_) in enumerate(test_loader):
 
         _, images, _, stress_times, time_series = p_dataset[int(sample_id)]
 
