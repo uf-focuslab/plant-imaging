@@ -332,3 +332,20 @@ todo: weightedrandomsampler ---> data augmentation
 
 11/14/21: 
 weighted random sampler is harder to implement than i thought. status: have a tensor of weights. not sure how to squish that with the train/test split. 
+
+11/26/21: 
+need to make a transform class which deletes random percentage of pixels in the image 
+
+03/12/21: 
+implemented the random deletion filter. with p=0.5, got all stressed predictions right with like [0.15,0.85]ish values. got all unstressed wrong with like [0.35,0.65] which is better than it used to be. going to try p=0.8 and see what changes
+
+p=0.8 improved the confidence of both the stressed guess [0.1,0.9] and a little bit of the unstressed guesses, [0.4,0.6]
+going to try messing with the weighting again. maybe [0.6,0.4]? not much change 
+now going back to default weights but with p=1, should be the same as black frame vs plant frame. 
+it works, but confidence is still bad for unstressed, [0.55,0.45] ish. and for stressed, [0.001, 0.999] 
+not sure why this disparity exists. maybe need to train longer, 50 epochs? 
+
+13/12/21: 
+
+writing up a report for the end of the semester and had an idea, instead of darkening unstressed images, maybe brightening the stressed images would be better. makes it a comparison between normal unstressed images and stressed images ranging from normal (~10) to white (255)
+also maybe instead of setting random pixels to 0, set them to 255. bigger difference between that and the background

@@ -13,6 +13,7 @@ import numpy as np
 from dataloader import PlantStressDataset
 from dataloader import Mask
 from dataloader import polarize_plant
+from dataloader import random_pixel_delete
 from utilities import net_input
 
 from convlstm import ConvLSTM
@@ -33,7 +34,7 @@ input_dim = 4                   # number of image channels
 num_layers = 4                  # number of hidden layers
 output_dim = 1                  # size of linear output layer
 batch_size = 1                  # number of samples per batch // batch size >1 broken right now
-num_epochs = 10                 # loop over entire dataset this many times
+num_epochs = 4000                 # loop over entire dataset this many times
 learning_rate = 0.0001            # learning rate for gradient descent
 kernel_size = 4                 # kernel size for convolution layer
 
@@ -60,7 +61,7 @@ if (type(train_file)==str and type(test_file)==str) and test_file!=train_file:
 # experimenting whether network can pick up on extremely simplified images, polarize_plant makes unstressed images black, stressed stay as plants. 
 multi_transform = transforms.Compose([
         Mask(8), 
-        polarize_plant,])
+        random_pixel_delete(0.5)])
 
 # PLANT dataset/loader
 p_dataset = PlantStressDataset(
@@ -69,7 +70,7 @@ p_dataset = PlantStressDataset(
         seq_length=sequence_length, # sequence length for LSTM
         seq_range=sequence_range,
         quadrant=0, # which quadrant of the experiment should be subsampled? 
-        transform=polarize_plant(True)) # mask the data based on blue value of 8
+        transform=random_pixel_delete(0.95)) # mask the data based on blue value of 8
 
 # annoying problem: when constructing time_series @ low indices it tries to pull negative time values. 
 # initially the bandaid fix was when it attempted that to push the value forward to t=0, 
@@ -142,9 +143,10 @@ train_sampler = torch.utils.data.WeightedRandomSampler(samples_weight,len(sample
 train_loader = torch.utils.data.DataLoader( # train_loader is setup from pushed indices, this will generate sample_id 's and then use those sample ids in the training loop to pull from the normal p_dataset
         dataset = push_p_dataset,  
         batch_size = batch_size,
-        drop_last=True,
-        sampler=train_sampler)
+        drop_last = True,
+        sampler = train_sampler)
 
+test_indices = test_indices.to(int) # not sure why this needed to be cast to int, test_loader wasn't working otherwise
 test_sampler = torch.utils.data.SubsetRandomSampler(test_indices)
 
 test_loader = torch.utils.data.DataLoader(
@@ -152,8 +154,6 @@ test_loader = torch.utils.data.DataLoader(
         batch_size = batch_size,
         drop_last = True, 
         sampler = test_sampler)
-
-
 
 
 """
@@ -203,7 +203,7 @@ nSamples = [62-push_value, 277] # [unstressed, stressed]
 normedWeights = [1 - (x / sum(nSamples)) for x in nSamples]
 print(normedWeights)
 # test manually set weights
-#normedWeights = [0.1, 0.9]
+normedWeights = [0.6, 0.4]
 normedWeights = torch.FloatTensor(normedWeights).to(device)
 criterion = nn.CrossEntropyLoss(weight=normedWeights) # note: cel needs dtype=long for out/labels
 criterion = nn.CrossEntropyLoss()
@@ -276,7 +276,7 @@ if train_file:
                        .format(epoch+1, num_epochs, i+1, total_step, loss_summary.item()))
                 loss_summary = []
 
-print('Training Sample Distribution: {}'.format(sample_distribution))
+    print('Training Sample Distribution: {}'.format(sample_distribution))
 
 
 
@@ -362,7 +362,7 @@ with torch.no_grad():
 
 
     print('test_loss: ', test_loss)
-    print('accuracy: {}/{}'.format(int(accuracy),len(push_p_test_loader)))
+    print('accuracy: {}/{}'.format(int(accuracy),len(test_loader)))
     print('correct stress predictions: {}/{}'.format(correct_stressed,total_stressed))
     print('correct unstressed predictions: {}/{}'.format(correct_unstressed,total_unstressed))
     #print('Test Accuracy of the model on the test images: {} %'.format(100 * correct / total)) 

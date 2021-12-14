@@ -236,6 +236,65 @@ class Mask(object):
         # spit back out
         return sample
 
+class random_pixel_delete(object):
+    """
+    depending on value passed (0-1.0), that % of pixels are deleted (=0) from the unstressed image
+    0.0 - delete nothing
+    0.1 - delete 10%
+    ...
+    0.9 - delete 90%
+    1.0 - delete the whole dang image why dontcha
+    """
+
+    def __init__(self, delete_ratio):
+        # make sure the delete_ratio is the correct datatype
+        assert isinstance(delete_ratio, float)
+        # set the internal variable to the passed in p_status
+        self.delete_ratio = delete_ratio
+
+    def __call__(self, sample):
+        delete_ratio = self.delete_ratio
+        images = sample[1]
+        # if delete_ratio is turned on
+        if delete_ratio > 0: 
+            # for each stress_time in the sample: 
+            for i,t in enumerate(sample[3]): 
+                # if the time step is unstressed: 
+                if t==-1: 
+                    # need to open up the image stack (4,4,256,256) then delete the same pixels from each of the 4 images (and from each channel)
+                    # shape: [time_step, channel, h, w]
+                    # two ways: grab the first image in the stack > generate delete_indices > delete those indices from each image in stack
+                    # nevermind, need to parse each image in stack to see if it is unstressed, then act on them individually
+                    # grab the image corresponding to the current stress_time in the stack
+                    # and also only one channel
+                    image = torch.from_numpy(images[i])
+                    temp_frame = image[0]
+                    # how many indices in tensor?
+                    n = temp_frame.numel()
+                    # how many indices to delete? 
+                    m = int(round(n*delete_ratio))
+                    # which indices to delete? 
+                    delete_indices = np.random.choice(n,m,replace=False)
+                    # question: more efficient to set indices to 0 for each channel or to create a mask then .* them.   
+                    # easy way: iterate over the 4 channels and keep setting the indices to 0
+                    for channel in range(image.shape[0]):
+                        
+                        # flatten the tensor and 0-out the selected indices
+                        image[channel].flatten()[delete_indices] = 0
+
+                    # turn back to numpy
+                    images[i] = image.numpy()
+                # otherwise, the time step is stressed: 
+                #else: 
+                    # plant is stressed >:), do nothing in fact dont even enter this case
+
+
+            # put the (now % deleted) image stack back into the sample dict
+            sample[1] = images
+
+        # spit back out
+        return sample
+
 class polarize_plant(object):
     """
     Polarize dataset, if sample is stressed -> leave as is (plant image)
@@ -261,7 +320,7 @@ class polarize_plant(object):
                 # if the time step is unstressed: 
                 if t==-1: 
                     # (hopefully) darken the unstressed image by 25%, rounded up
-                    images[i][:] = np.ceil(images[i][:]*0.25)
+                    images[i][:] = np.ceil(images[i][:]*0.1)
                 # otherwise, the time step is stressed: 
                 #else: 
                     # plant is stressed >:), do nothing in fact dont even enter this case
